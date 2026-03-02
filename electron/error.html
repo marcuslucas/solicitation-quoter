@@ -1,0 +1,14 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0F1923;color:#E2E8F0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;padding:40px;text-align:center}
+h1{color:#E74C3C;font-size:20px}p{color:#7A9BBB;font-size:13px;max-width:460px;line-height:1.6}
+code{color:#C9A02B;background:#1A2738;padding:2px 6px;border-radius:4px}
+button{margin-top:8px;padding:10px 22px;background:#C9A02B;color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+</style></head><body>
+<div style="font-size:44px">⚠️</div>
+<h1>Backend Failed to Start</h1>
+<p>The Python backend could not launch. Make sure Python is installed and dependencies are set up:</p>
+<p><code>pip install flask pdfplumber pypdf python-docx anthropic</code></p>
+<p>Then relaunch with <code>npm start</code></p>
+<button onclick="location.reload()">↺ Retry</button>
+</body></html>

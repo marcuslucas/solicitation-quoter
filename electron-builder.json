@@ -1,0 +1,21 @@
+{
+  "appId": "com.yourcompany.solicitationquoter",
+  "productName": "Solicitation Quoter",
+  "directories": { "output": "dist", "buildResources": "resources" },
+  "files": ["electron/**/*", "package.json"],
+  "win": {
+    "target": [{ "target": "nsis", "arch": ["x64"] }],
+    "extraResources": [{ "from": "dist-backend/solicitationquoter-backend.exe", "to": "solicitationquoter-backend.exe" }]
+  },
+  "mac": {
+    "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+    "extraResources": [{ "from": "dist-backend/solicitationquoter-backend", "to": "solicitationquoter-backend" }],
+    "entitlements": "resources/entitlements.mac.plist",
+    "hardenedRuntime": true
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true
+  }
+}

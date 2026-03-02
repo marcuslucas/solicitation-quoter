@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SolQuoter</title>
+<style>
+:root{
+  --navy:#0D2B55;--navy2:#142F5A;--gold:#C9A02B;--gold2:#E6BB3A;
+  --bg:#0F1923;--bg2:#16222E;--bg3:#1C2C3C;--panel:#1A2738;
+  --border:#253545;--text:#E2E8F0;--muted:#7A9BBB;
+  --green:#2ECC71;--red:#E74C3C;--r:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+
+/* Layout */
+.app{display:flex;height:100vh}
+.sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.sidebar-header{padding:20px 16px 16px;border-bottom:1px solid var(--border);-webkit-app-region:drag}
+.brand{font-size:16px;font-weight:700}.brand span{color:var(--gold)}
+.brand-sub{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.nav{flex:1;padding:12px 8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r);cursor:pointer;color:var(--muted);font-size:13px;transition:all .15s;margin-bottom:2px;border:1px solid transparent;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg3)}
+.nav-item.active{color:var(--text);background:var(--navy2);border-color:var(--border);font-weight:500}
+.nav-item.done{color:var(--text)}
+.step-num{width:18px;height:18px;border-radius:50%;background:var(--border);color:var(--muted);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-item.active .step-num{background:var(--gold);color:#000}
+.nav-item.done .step-num{background:var(--green);color:#fff}
+.sidebar-footer{padding:12px 16px;border-top:1px solid var(--border)}
+.settings-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);cursor:pointer;color:var(--muted);font-size:12px;transition:all .15s}
+.settings-btn:hover{color:var(--text);background:var(--bg3)}
+
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.topbar{height:52px;min-height:52px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;-webkit-app-region:drag}
+.topbar-title{font-size:15px;font-weight:600;flex:1}
+.topbar-file{font-size:12px;color:var(--muted)}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* Cards */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0}
+
+/* Forms */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid.c1{grid-template-columns:1fr}.grid.c3{grid-template-columns:1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:5px}
+.field.s2{grid-column:span 2}.field.s3{grid-column:span 3}
+label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+input,textarea,select{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text);padding:8px 10px;font-size:13px;font-family:inherit;outline:none;transition:border-color .15s;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--gold)}
+textarea{resize:vertical;min-height:70px}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:inherit;white-space:nowrap}
+.btn-primary{background:var(--gold);color:#000}.btn-primary:hover{background:var(--gold2)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-ghost:hover{color:var(--text);background:var(--bg3)}
+.btn-danger{background:var(--red);color:#fff}.btn-danger:hover{background:#c0392b}
+.btn-success{background:var(--green);color:#fff}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.btn-sm{padding:5px 10px;font-size:12px}.btn-lg{padding:12px 24px;font-size:14px}
+.btn-row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+
+/* Dropzone */
+.dropzone{border:2px dashed var(--border);border-radius:12px;padding:48px 32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
+.dropzone:hover,.dropzone.over{border-color:var(--gold);background:rgba(201,160,43,.05)}
+.dz-icon{font-size:40px;margin-bottom:12px}
+.dz-title{font-size:16px;font-weight:600;margin-bottom:6px}
+.dz-sub{font-size:12px;color:var(--muted)}
+.dz-types{margin-top:12px;display:flex;gap:8px;justify-content:center}
+.pill{font-size:11px;padding:3px 8px;border-radius:4px;background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+
+/* Alerts */
+.alert{padding:12px 16px;border-radius:var(--r);display:flex;align-items:flex-start;gap:10px;margin-bottom:14px;font-size:13px}
+.alert-success{background:rgba(46,204,113,.1);border:1px solid rgba(46,204,113,.3);color:#2ecc71}
+.alert-error{background:rgba(231,76,60,.1);border:1px solid rgba(231,76,60,.3);color:#e74c3c}
+.alert-info{background:rgba(52,152,219,.1);border:1px solid rgba(52,152,219,.3);color:#3498db}
+.alert-warn{background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);color:#f39c12}
+
+/* Progress */
+.progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;margin:10px 0}
+.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .3s}
+.spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:sp .7s linear infinite;display:inline-block;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* Data grid */
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.data-item{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px}
+.data-item.s2{grid-column:span 2}
+.data-label{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.data-item input{background:transparent;border:1px solid transparent;padding:3px 5px;width:100%}
+.data-item input:focus{background:var(--bg2);border-color:var(--gold)}
+
+/* Line items table */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{background:var(--navy2);padding:8px 10px;font-size:11px;font-weight:600;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.02)}
+.tbl td input{background:transparent;border:1px solid transparent;padding:4px 6px;width:100%}
+.tbl td input:focus{background:var(--bg3);border-color:var(--gold)}
+.tbl .tfoot td{background:var(--bg3);font-weight:600;color:var(--gold)}
+.row-actions{display:flex;gap:4px}
+
+/* Method badge */
+.mbadge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 8px;border-radius:4px;margin-bottom:14px}
+.mbadge.ai{background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.3)}
+.mbadge.rules{background:rgba(243,156,18,.15);color:#f39c12;border:1px solid rgba(243,156,18,.3)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px;width:460px;max-height:80vh;overflow-y:auto;box-shadow:0 4px 30px rgba(0,0,0,.5)}
+.modal h2{font-size:17px;margin-bottom:20px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+
+.hidden{display:none!important}
+.ml-auto{margin-left:auto}
+.text-muted{color:var(--muted)}
+.text-gold{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand">Sol<span>Quoter</span></div>
+      <div class="brand-sub">Quote Generator</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" data-step="1" onclick="goTo(1)">
+        <span class="step-num" id="sn1">1</span><span>Upload Solicitation</span>
+      </div>
+      <div class="nav-item" data-step="2" onclick="goTo(2)">
+        <span class="step-num" id="sn2">2</span><span>Review Extracted Data</span>
+      </div>
+      <div class="nav-item" data-step="3" onclick="goTo(3)">
+        <span class="step-num" id="sn3">3</span><span>Your Company Info</span>
+      </div>
+      <div class="nav-item" data-step="4" onclick="goTo(4)">
+        <span class="step-num" id="sn4">4</span><span>Build Quote Lines</span>
+      </div>
+      <div class="nav-item" data-step="5" onclick="goTo(5)">
+        <span class="step-num" id="sn5">5</span><span>Generate &amp; Export</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="settings-btn" onclick="openSettings()">⚙️ &nbsp;Settings</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="tt">Upload Solicitation</div>
+      <div class="topbar-file" id="tf"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay hidden" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h2>⚙️ Settings</h2>
+    <div class="field" style="margin-bottom:14px">
+      <label>Anthropic API Key (optional — enables smarter AI extraction)</label>
+      <input type="password" id="s-apikey" placeholder="sk-ant-..." />
+      <span class="text-muted" style="font-size:11px;margin-top:4px">
+        Stored locally only. Without it, rule-based extraction still works well for standard formats like sam.gov.
+      </span>
+    </div>
+    <div class="field">
+      <label>Default Quote Validity</label>
+      <input id="s-validity" value="30 days" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ────────────────────────────────────────────────────────────────────
+const S = {
+  step: 1, done: new Set(), port: 5199,
+  apiKey: '', validity: '30 days',
+  file: null, filePath: null,
+  extracted: {},
+  vendor: {
+    company_name:'', address:'', city_state_zip:'', phone:'', email:'',
+    website:'', prepared_by:'', title:'', quote_number:'', sam_uei:'',
+    validity_period:'30 days', freight:'', tax_rate:'', notes:'',
+    terms:'Net 30. FOB Destination. Vendor certifies SAM.gov registration and compliance with all applicable solicitation requirements.'
+  },
+  items: []
+}
+
+const TITLES = {1:'Upload Solicitation',2:'Review Extracted Data',3:'Your Company Info',4:'Build Quote Lines',5:'Generate & Export'}
+
+async function init() {
+  if (window.api) S.port = await window.api.getPort()
+  try {
+    S.apiKey = localStorage.getItem('apiKey') || ''
+    S.validity = localStorage.getItem('validity') || '30 days'
+    const v = localStorage.getItem('vendor')
+    if (v) Object.assign(S.vendor, JSON.parse(v))
+  } catch(e) {}
+  render(1)
+}
+
+// ── NAV ──────────────────────────────────────────────────────────────────────
+function goTo(n) {
+  if (n > S.step + 1 && !S.done.has(n-1)) return
+  S.step = n
+  render(n)
+  document.querySelectorAll('.nav-item[data-step]').forEach(el => {
+    const s = +el.dataset.step
+    el.classList.toggle('active', s === n)
+    el.classList.toggle('done', S.done.has(s) && s !== n)
+    const sn = document.getElementById('sn'+s)
+    sn.textContent = S.done.has(s) && s !== n ? '✓' : s
+  })
+  document.getElementById('tt').textContent = TITLES[n]
+}
+
+function next() { S.done.add(S.step); goTo(S.step + 1) }
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function render(n) {
+  const c = document.getElementById('content')
+  c.innerHTML = ''
+  ;[,step1,step2,step3,step4,step5][n](c)
+}
+
+// ── STEP 1: UPLOAD ───────────────────────────────────────────────────────────
+function step1(c) {
+  c.innerHTML = `
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Select Solicitation Document</div>
+    <div class="dropzone" id="dz" onclick="pickFile()" ondrop="onDrop(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
+      <div class="dz-icon">📄</div>
+      <div class="dz-title">Drop your solicitation file here</div>
+      <div class="dz-sub">or click to browse</div>
+      <div class="dz-types"><span class="pill">PDF</span><span class="pill">DOCX</span><span class="pill">TXT</span></div>
+    </div>
+    <div id="file-info" class="hidden" style="margin-top:14px">
+      <div class="alert alert-success">
+        <span>✅</span>
+        <div><strong id="fname"></strong><div style="font-size:11px;margin-top:2px" id="fsize"></div></div>
+        <button class="btn btn-ghost btn-sm ml-auto" onclick="clearFile()">✕</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>AI Enhancement (Optional)</div>
+    <div class="field">
+      <label>Anthropic API Key</label>
+      <input type="password" id="ak" placeholder="sk-ant-... (leave blank to use rule-based extraction)" value="${esc(S.apiKey)}" oninput="S.apiKey=this.value" />
+      <span class="text-muted" style="font-size:11px;margin-top:4px">Without a key, rule-based extraction handles most standard formats including sam.gov documents.</span>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary btn-lg" id="parse-btn" onclick="doParse()" disabled>🔍 Extract Solicitation Data</button>
+  </div>
+  <div id="parse-prog" class="hidden" style="margin-top:12px">
+    <div class="alert alert-info"><div class="spin"></div><span id="parse-msg" style="margin-left:8px">Uploading...</span></div>
+    <div class="progress"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+  </div>
+  <div id="parse-err" class="hidden"></div>`
+
+  if (S.file || S.filePath) showFile(S.file || { name: S.filePath.split(/[/\\]/).pop() })
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('dz').classList.add('over') }
+function onDragLeave() { document.getElementById('dz').classList.remove('over') }
+function onDrop(e) {
+  e.preventDefault()
+  document.getElementById('dz').classList.remove('over')
+  const f = e.dataTransfer.files[0]
+  if (f) { S.file = f; S.filePath = null; showFile(f) }
+}
+
+async function pickFile() {
+  if (window.api) {
+    const r = await window.api.openFile()
+    if (!r.canceled && r.filePaths[0]) {
+      S.filePath = r.filePaths[0]; S.file = null
+      showFile({ name: r.filePaths[0].split(/[/\\]/).pop() })
+    }
+  }
+}
+
+function showFile(f) {
+  const fi = document.getElementById('file-info'); if (!fi) return
+  fi.classList.remove('hidden')
+  document.getElementById('fname').textContent = f.name
+  document.getElementById('fsize').textContent = f.size ? fmt(f.size) : ''
+  document.getElementById('parse-btn').disabled = false
+  document.getElementById('tf').textContent = f.name
+}
+
+function clearFile() {
+  S.file = null; S.filePath = null
+  document.getElementById('file-info').classList.add('hidden')
+  document.getElementById('parse-btn').disabled = true
+  document.getElementById('tf').textContent = ''
+}
+
+function fmt(b) {
+  if (b < 1024) return b+'B'
+  if (b < 1048576) return (b/1024).toFixed(1)+'KB'
+  return (b/1048576).toFixed(1)+'MB'
+}
+
+async function doParse() {
+  const prog = document.getElementById('parse-prog')
+  const err  = document.getElementById('parse-err')
+  const btn  = document.getElementById('parse-btn')
+  const msg  = document.getElementById('parse-msg')
+  const bar  = document.getElementById('prog')
+  prog.classList.remove('hidden'); err.classList.add('hidden'); btn.disabled = true
+  const p = (pct, m) => { bar.style.width=pct+'%'; msg.textContent=m }
+  try {
+    p(15, 'Uploading document...')
+    const fd = new FormData()
+    fd.append('api_key', S.apiKey || '')
+    if (S.file) {
+      fd.append('file', S.file)
+    } else if (S.filePath) {
+      const resp2 = await fetch('file:///'+S.filePath.replace(/\\/g,'/')).catch(()=>null)
+      if (resp2) {
+        const blob = await resp2.blob()
+        const name = S.filePath.split(/[/\\]/).pop()
+        fd.append('file', blob, name)
+      } else {
+        throw new Error('Could not read file. Try drag-and-drop instead.')
+      }
+    } else throw new Error('No file selected')
+    p(40, 'Parsing document...')
+    const r = await fetch(`http://127.0.0.1:${S.port}/parse`, { method:'POST', body:fd })
+    p(75, S.apiKey ? 'Running AI extraction...' : 'Extracting data...')
+    const data = await r.json()
+    if (!data.success) throw new Error(data.error || 'Extraction failed')
+    p(100, 'Done!')
+    S.extracted = data.data
+    S.done.add(1)
+    setTimeout(() => goTo(2), 500)
+  } catch(e) {
+    err.classList.remove('hidden')
+    err.innerHTML = `<div class="alert alert-error">❌ ${esc(e.message)}</div>`
+    btn.disabled = false; p(0,'')
+  }
+}
+
+// ── STEP 2: REVIEW ───────────────────────────────────────────────────────────
+function step2(c) {
+  const d = S.extracted
+  const m = d._method||'rules'
+  const badge = m.includes('ai')
+    ? '<span class="mbadge ai">🤖 AI + Rule-Based Extraction</span>'
+    : '<span class="mbadge rules">📋 Rule-Based Extraction</span>'
+
+  const fields = [
+    ['solicitation_number','Solicitation #',false],['project_title','Project Title',true],
+    ['solicitation_type','Type',false],['issuing_agency','Issuing Agency',false],
+    ['due_date','Response Due Date',false],['posting_date','Posting Date',false],
+    ['contact_name','Contact Name',false],['contact_email','Contact Email',false],
+    ['contact_phone','Contact Phone',false],['naics_code','NAICS Code',false],
+    ['psc_code','PSC Code',false],['set_aside','Set-Aside',false],
+    ['place_of_performance','Place of Performance',true],
+    ['period_of_performance','Period of Performance',false],['estimated_value','Est. Value',false],
+  ]
+
+  const items = fields.map(([k,lbl,wide]) => `
+    <div class="data-item${wide?' s2':''}">
+      <div class="data-label">${lbl}</div>
+      <input value="${esc(String(d[k]||''))}" onchange="S.extracted['${k}']=this.value" placeholder="Not found" />
+    </div>`).join('')
+
+  const qtys = d.quantities||[]
+  const qhtml = qtys.length ? `<div class="card">
+    <div class="card-title"><span class="dot"></span>Detected Quantities</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${qtys.map(q=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 14px;text-align:center">
+        <div style="font-size:10px;color:var(--muted)">${q.size}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--gold)">${q.qty}</div>
+      </div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">These will pre-fill your quote line items.</div>
+  </div>` : ''
+
+  c.innerHTML = `
+  ${badge}
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Extracted Fields <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">— click any field to edit</span></div>
+    <div class="data-grid">${items}</div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Scope of Work / Description</div>
+    <textarea rows="6" onchange="S.extracted.scope_of_work=this.value">${esc(d.scope_of_work||'')}</textarea>
+  </div>
+  ${qhtml}
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
+    <button class="btn btn-primary" onclick="next()">Company Info →</button>
+  </div>`
+}
+
+// ── STEP 3: VENDOR ───────────────────────────────────────────────────────────
+function step3(c) {
+  const v = S.vendor
+  c.innerHTML = `
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Company Information</div>
+    <div class="grid">
+      <div class="field s2"><label>Company / Business Name *</label><input value="${esc(v.company_name)}" oninput="S.vendor.company_name=this.value" placeholder="Acme Defense Solutions LLC" /></div>
+      <div class="field"><label>Street Address</label><input value="${esc(v.address)}" oninput="S.vendor.address=this.value" placeholder="123 Main Street" /></div>
+      <div class="field"><label>City, State ZIP</label><input value="${esc(v.city_state_zip)}" oninput="S.vendor.city_state_zip=this.value" placeholder="Springfield, VA 22150" /></div>
+      <div class="field"><label>Phone</label><input value="${esc(v.phone)}" oninput="S.vendor.phone=this.value" placeholder="(555) 555-0100" /></div>
+      <div class="field"><label>Email</label><input value="${esc(v.email)}" oninput="S.vendor.email=this.value" placeholder="quotes@yourcompany.com" /></div>
+      <div class="field"><label>Website</label><input value="${esc(v.website)}" oninput="S.vendor.website=this.value" placeholder="www.yourcompany.com" /></div>
+      <div class="field"><label>SAM.gov UEI</label><input value="${esc(v.sam_uei)}" oninput="S.vendor.sam_uei=this.value" placeholder="ABCDEF123456" /></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Quote Details</div>
+    <div class="grid">
+      <div class="field"><label>Prepared By</label><input value="${esc(v.prepared_by)}" oninput="S.vendor.prepared_by=this.value" placeholder="John Smith" /></div>
+      <div class="field"><label>Title</label><input value="${esc(v.title)}" oninput="S.vendor.title=this.value" placeholder="Contracts Manager" /></div>
+      <div class="field"><label>Quote Number</label><input value="${esc(v.quote_number)}" oninput="S.vendor.quote_number=this.value" placeholder="Q-2025-001" /></div>
+      <div class="field"><label>Quote Valid For</label><input value="${esc(v.validity_period)}" oninput="S.vendor.validity_period=this.value" placeholder="30 days" /></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Pricing Extras</div>
+    <div class="grid c3">
+      <div class="field"><label>Freight / Shipping ($)</label><input type="number" value="${esc(String(v.freight||''))}" oninput="S.vendor.freight=this.value" placeholder="0.00" min="0" /></div>
+      <div class="field"><label>Tax Rate (%)</label><input type="number" value="${esc(String(v.tax_rate||''))}" oninput="S.vendor.tax_rate=this.value" placeholder="0" min="0" max="100" /></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Notes &amp; Terms</div>
+    <div class="grid c1">
+      <div class="field"><label>Notes</label><textarea oninput="S.vendor.notes=this.value" placeholder="Optional notes...">${esc(v.notes)}</textarea></div>
+      <div class="field"><label>Terms &amp; Conditions</label><textarea oninput="S.vendor.terms=this.value">${esc(v.terms)}</textarea></div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+    <button class="btn btn-ghost" onclick="saveVendor()">💾 Save Info</button>
+    <button class="btn btn-primary" onclick="next()">Build Quote Lines →</button>
+  </div>`
+}
+
+function saveVendor() {
+  try { localStorage.setItem('vendor', JSON.stringify(S.vendor)) } catch(e) {}
+  const b = event.target; b.textContent='✅ Saved!'; setTimeout(()=>b.textContent='💾 Save Info',1500)
+}
+
+// ── STEP 4: LINE ITEMS ───────────────────────────────────────────────────────
+function step4(c) {
+  if (S.items.length === 0 && S.extracted.quantities) {
+    S.items = S.extracted.quantities.map((q,i) => ({
+      id:i+1, description: S.extracted.project_title||'', size:q.size, qty:q.qty, unit_price:''
+    }))
+  }
+  if (S.items.length === 0) S.items = [{id:1,description:'',size:'',qty:'',unit_price:''}]
+
+  const rows = S.items.map((it,i) => `
+    <tr>
+      <td style="text-align:center;color:var(--muted)">${i+1}</td>
+      <td><input value="${esc(it.description||'')}" onchange="S.items[${i}].description=this.value" placeholder="Item description" /></td>
+      <td><input value="${esc(String(it.size||''))}" onchange="S.items[${i}].size=this.value" style="max-width:80px" /></td>
+      <td><input type="number" value="${esc(String(it.qty||''))}" onchange="S.items[${i}].qty=this.value;updTotals()" min="0" style="max-width:80px" /></td>
+      <td><input type="number" value="${esc(String(it.unit_price||''))}" onchange="S.items[${i}].unit_price=this.value;updTotals()" min="0" step="0.01" /></td>
+      <td style="text-align:right;color:var(--gold)" id="lt${i}">${lineTotal(it)}</td>
+      <td><div class="row-actions">
+        <button class="btn btn-ghost btn-sm" onclick="dupRow(${i})">⎘</button>
+        <button class="btn btn-danger btn-sm" onclick="delRow(${i})">✕</button>
+      </div></td>
+    </tr>`).join('')
+
+  const grand = grandTotal()
+  const fr = parseFloat(S.vendor.freight||0)
+  const tx = parseFloat(S.vendor.tax_rate||0)
+  const tax = grand*(tx/100); const final = grand+fr+tax
+
+  c.innerHTML = `
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Line Items</div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th style="width:36px">#</th><th>Description</th><th style="width:90px">Size/Type</th>
+          <th style="width:80px">Qty</th><th style="width:110px">Unit Price</th>
+          <th style="width:110px;text-align:right">Total</th><th style="width:72px"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr class="tfoot"><td colspan="5" style="text-align:right;padding-right:16px">Subtotal</td><td style="text-align:right" id="gt">$${grand.toFixed(2)}</td><td></td></tr>
+          ${fr?`<tr class="tfoot"><td colspan="5" style="text-align:right;padding-right:16px">Freight</td><td style="text-align:right">$${fr.toFixed(2)}</td><td></td></tr>`:''}
+          ${tx?`<tr class="tfoot"><td colspan="5" style="text-align:right;padding-right:16px">Tax (${tx}%)</td><td style="text-align:right">$${tax.toFixed(2)}</td><td></td></tr>`:''}
+          <tr class="tfoot" style="font-size:14px"><td colspan="5" style="text-align:right;padding-right:16px">GRAND TOTAL</td><td style="text-align:right;font-size:15px" id="ft">$${final.toFixed(2)}</td><td></td></tr>
+        </tfoot>
+      </table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="addRow()">+ Add Row</button>
+      <button class="btn btn-ghost btn-sm" onclick="addRows()">+ Add Multiple</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearRows()" style="color:var(--red)">🗑 Clear All</button>
+      <span class="ml-auto text-muted" style="align-self:center">${S.items.length} item${S.items.length!==1?'s':''}</span>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
+    <button class="btn btn-primary" onclick="next()">Preview &amp; Generate →</button>
+  </div>`
+}
+
+function lineTotal(it) {
+  const t = parseFloat(it.qty||0)*parseFloat(it.unit_price||0)
+  return t>0?'$'+t.toFixed(2):'–'
+}
+function grandTotal() {
+  return S.items.reduce((s,it)=>s+parseFloat(it.qty||0)*parseFloat(it.unit_price||0),0)
+}
+function updTotals() {
+  S.items.forEach((it,i)=>{ const e=document.getElementById('lt'+i); if(e)e.textContent=lineTotal(it) })
+  const g=grandTotal(),fr=parseFloat(S.vendor.freight||0),tx=parseFloat(S.vendor.tax_rate||0)
+  const tax=g*(tx/100),fin=g+fr+tax
+  const ge=document.getElementById('gt'),fe=document.getElementById('ft')
+  if(ge)ge.textContent='$'+g.toFixed(2); if(fe)fe.textContent='$'+fin.toFixed(2)
+}
+function addRow() { S.items.push({id:S.items.length+1,description:'',size:'',qty:'',unit_price:''}); render(4) }
+function addRows() { const n=parseInt(prompt('How many rows?','5')); if(n>0){for(let i=0;i<n;i++)S.items.push({id:S.items.length+1,description:'',size:'',qty:'',unit_price:''}); render(4)} }
+function dupRow(i) { S.items.splice(i+1,0,{...S.items[i]}); render(4) }
+function delRow(i) { if(S.items.length>1){S.items.splice(i,1); render(4)} }
+function clearRows() { if(confirm('Clear all line items?')){S.items=[{id:1,description:'',size:'',qty:'',unit_price:''}];render(4)} }
+
+// ── STEP 5: GENERATE ─────────────────────────────────────────────────────────
+function step5(c) {
+  const d=S.extracted,v=S.vendor
+  const items=S.items.filter(i=>i.description||i.qty)
+  const grand=grandTotal(),fr=parseFloat(v.freight||0),tx=parseFloat(v.tax_rate||0)
+  const tax=grand*(tx/100),final=grand+fr+tax
+
+  const warns=[]
+  if(!v.company_name) warns.push('Company name not set')
+  if(!d.solicitation_number) warns.push('Solicitation number not found')
+  if(items.length===0) warns.push('No line items added')
+  if(items.some(i=>!i.unit_price)) warns.push('Some items are missing unit prices')
+
+  const warnHtml = warns.length
+    ? `<div class="alert alert-warn">⚠️ <div><strong>Review before generating:</strong>${warns.map(w=>`<div>• ${w}</div>`).join('')}</div></div>`
+    : `<div class="alert alert-success">✅ Quote is ready to generate.</div>`
+
+  c.innerHTML = `
+  ${warnHtml}
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Summary</div>
+    <div class="data-grid">
+      <div class="data-item"><div class="data-label">Solicitation #</div><div>${esc(d.solicitation_number||'—')}</div></div>
+      <div class="data-item"><div class="data-label">Project</div><div>${esc(d.project_title||'—')}</div></div>
+      <div class="data-item"><div class="data-label">Vendor</div><div>${esc(v.company_name||'—')}</div></div>
+      <div class="data-item"><div class="data-label">Prepared By</div><div>${esc(v.prepared_by||'—')}</div></div>
+      <div class="data-item"><div class="data-label">Line Items</div><div>${items.length}</div></div>
+      <div class="data-item"><div class="data-label">Subtotal</div><div class="text-gold">$${grand.toFixed(2)}</div></div>
+      ${fr?`<div class="data-item"><div class="data-label">Freight</div><div>$${fr.toFixed(2)}</div></div>`:''}
+      ${tx?`<div class="data-item"><div class="data-label">Tax (${tx}%)</div><div>$${tax.toFixed(2)}</div></div>`:''}
+      <div class="data-item" style="border:1px solid var(--gold)"><div class="data-label">TOTAL</div><div class="text-gold" style="font-size:16px;font-weight:700">$${final.toFixed(2)}</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><span class="dot"></span>Export</div>
+    <button class="btn btn-primary btn-lg" onclick="doGenerate()" id="gen-btn">📄 Generate Quote (.docx)</button>
+    <div style="font-size:12px;color:var(--muted);margin-top:10px">A Save dialog will open. The document opens automatically after saving.</div>
+  </div>
+  <div id="gen-prog" class="hidden" style="margin-top:12px">
+    <div class="alert alert-info"><div class="spin"></div><span style="margin-left:8px">Generating document...</span></div>
+  </div>
+  <div id="gen-err" class="hidden"></div>
+  <div id="gen-ok" class="hidden">
+    <div class="alert alert-success">✅ <strong>Quote saved and opened successfully!</strong></div>
+  </div>
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn btn-ghost" onclick="goTo(4)">← Back</button>
+    <button class="btn btn-ghost" onclick="startOver()">🔄 New Quote</button>
+  </div>`
+}
+
+async function doGenerate() {
+  const btn=document.getElementById('gen-btn')
+  const prog=document.getElementById('gen-prog')
+  const err=document.getElementById('gen-err')
+  const ok=document.getElementById('gen-ok')
+  btn.disabled=true; prog.classList.remove('hidden'); err.classList.add('hidden'); ok.classList.add('hidden')
+  try {
+    const r = await fetch(`http://127.0.0.1:${S.port}/generate_quote`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ solicitation:S.extracted, vendor:S.vendor, line_items:S.items.filter(i=>i.description||i.qty) })
+    })
+    if(!r.ok){ const e=await r.json(); throw new Error(e.error||'Generation failed') }
+    const blob=await r.blob()
+    const ab=await blob.arrayBuffer()
+    const bytes=Array.from(new Uint8Array(ab))
+    const sol=(S.extracted.solicitation_number||'Quote').replace(/[^A-Za-z0-9\-_]/g,'_')
+    const name=`Quote_${sol}.docx`
+    prog.classList.add('hidden')
+    if(window.api){
+      const res=await window.api.saveQuote({bytes,name})
+      if(res.success){ ok.classList.remove('hidden'); S.done.add(5) }
+    } else {
+      const url=URL.createObjectURL(blob); const a=document.createElement('a')
+      a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url)
+      ok.classList.remove('hidden')
+    }
+    btn.disabled=false
+  } catch(e) {
+    prog.classList.add('hidden'); err.classList.remove('hidden')
+    err.innerHTML=`<div class="alert alert-error">❌ ${esc(e.message)}</div>`
+    btn.disabled=false
+  }
+}
+
+function startOver() {
+  if(!confirm('Start a new quote? Current data will be cleared.')) return
+  S.step=1; S.done=new Set(); S.file=null; S.filePath=null; S.extracted={}; S.items=[]
+  document.getElementById('tf').textContent=''; goTo(1)
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('s-apikey').value=S.apiKey
+  document.getElementById('s-validity').value=S.validity
+  document.getElementById('settings-overlay').classList.remove('hidden')
+}
+function closeSettings() { document.getElementById('settings-overlay').classList.add('hidden') }
+function saveSettings() {
+  S.apiKey=document.getElementById('s-apikey').value.trim()
+  S.validity=document.getElementById('s-validity').value.trim()
+  S.vendor.validity_period=S.validity
+  try{ localStorage.setItem('apiKey',S.apiKey); localStorage.setItem('validity',S.validity) }catch(e){}
+  closeSettings()
+}
+
+// ── UTIL ─────────────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+}
+
+init()
+</script>
+</body>
+</html>
