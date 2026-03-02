@@ -183,8 +183,8 @@ def generate_quote(solicitation, vendor, line_items):
         sec.top_margin = Inches(1); sec.bottom_margin = Inches(1)
         sec.left_margin = Inches(1.25); sec.right_margin = Inches(1.25)
 
-    NAVY  = RGBColor(0x0D,0x2B,0x55)
-    DGRAY = RGBColor(0x44,0x44,0x44)
+    NAVY  = RGBColor(0x00,0x00,0x00)
+    DGRAY = RGBColor(0x33,0x33,0x33)
     WHITE = RGBColor(0xFF,0xFF,0xFF)
 
     def bg(cell, color):
@@ -195,6 +195,7 @@ def generate_quote(solicitation, vendor, line_items):
 
     def run(para, text, bold=False, size=11, color=None, italic=False):
         r = para.add_run(text); r.bold=bold; r.italic=italic; r.font.size=Pt(size)
+        r.font.name = 'Calibri'
         if color: r.font.color.rgb=color
         return r
 
@@ -204,25 +205,36 @@ def generate_quote(solicitation, vendor, line_items):
         run(p, txt, bold=True, size=11, color=NAVY)
         pr = p._p.get_or_add_pPr(); bd = OxmlElement("w:pBdr")
         b = OxmlElement("w:bottom"); b.set(qn("w:val"),"single"); b.set(qn("w:sz"),"6")
-        b.set(qn("w:space"),"1"); b.set(qn("w:color"),"0D2B55"); bd.append(b); pr.append(bd)
+        b.set(qn("w:space"),"1"); b.set(qn("w:color"),"1A1A1A"); bd.append(b); pr.append(bd)
 
     today = datetime.date.today().strftime("%B %d, %Y")
 
-    # Header table
+# Header table
     ht = doc.add_table(rows=1, cols=2); ht.style="Table Grid"; ht.autofit=False
     ht.columns[0].width=Inches(3.5); ht.columns[1].width=Inches(3.25)
     lc=ht.cell(0,0); rc=ht.cell(0,1)
-    bg(lc,"0D2B55"); bg(rc,"F5F5F5")
-    lp=lc.paragraphs[0]; lp.paragraph_format.space_before=Pt(10); lp.paragraph_format.left_indent=Pt(10)
+    bg(lc,"1A1A1A"); bg(rc,"F5F5F5")
+
+    # Left cell — company info (all white text on black background)
+    lp=lc.paragraphs[0]
+    lp.paragraph_format.space_before=Pt(10)
+    lp.paragraph_format.left_indent=Pt(10)
     run(lp, vendor.get("company_name","Your Company"), bold=True, size=15, color=WHITE)
     for f in ["address","city_state_zip","phone","email","website"]:
-        v=vendor.get(f,"")
-        if v:
-            fp=lc.add_paragraph(); fp.paragraph_format.left_indent=Pt(10)
-            run(fp, v, size=9, color=RGBColor(0xCC,0xCC,0xCC))
-    lc.add_paragraph()
-    rp=rc.paragraphs[0]; rp.paragraph_format.space_before=Pt(10); rp.paragraph_format.left_indent=Pt(8)
-    run(rp,"QUOTE / PROPOSAL", bold=True, size=13, color=NAVY)
+        val=vendor.get(f,"")
+        if val:
+            fp=lc.add_paragraph()
+            fp.paragraph_format.left_indent=Pt(10)
+            run(fp, val, size=9, color=WHITE)
+    pad=lc.add_paragraph()
+    pad.paragraph_format.left_indent=Pt(10)
+    run(pad, " ", size=9, color=WHITE)
+
+    # Right cell — quote metadata (dark text on light background)
+    rp=rc.paragraphs[0]
+    rp.paragraph_format.space_before=Pt(10)
+    rp.paragraph_format.left_indent=Pt(8)
+    run(rp,"QUOTE / PROPOSAL", bold=True, size=13, color=RGBColor(0x00,0x00,0x00))
     for label,value in [
         ("Quote #", vendor.get("quote_number","Q-"+datetime.date.today().strftime("%Y%m%d"))),
         ("Date", today),
@@ -231,11 +243,12 @@ def generate_quote(solicitation, vendor, line_items):
         ("Prepared By", vendor.get("prepared_by","")),
     ]:
         if value:
-            mp=rc.add_paragraph(); mp.paragraph_format.left_indent=Pt(8)
-            run(mp,f"{label}: ",bold=True,size=9,color=DGRAY); run(mp,value,size=9,color=DGRAY)
+            mp=rc.add_paragraph()
+            mp.paragraph_format.left_indent=Pt(8)
+            run(mp,f"{label}: ",bold=True,size=9,color=RGBColor(0x33,0x33,0x33))
+            run(mp,value,size=9,color=RGBColor(0x33,0x33,0x33))
     rc.add_paragraph()
     doc.add_paragraph()
-
     # Solicitation info
     heading("SOLICITATION INFORMATION")
     fields=[
@@ -257,7 +270,7 @@ def generate_quote(solicitation, vendor, line_items):
         st.columns[0].width=Inches(2.2); st.columns[1].width=Inches(4.55)
         for i,(label,value) in enumerate(fields):
             lc2=st.cell(i,0); rc2=st.cell(i,1)
-            bg(lc2,"E8EDF3")
+            bg(lc2,"F0F0F0")
             lp2=lc2.paragraphs[0]; lp2.paragraph_format.left_indent=Pt(4)
             run(lp2,label,bold=True,size=9,color=NAVY)
             rp2=rc2.paragraphs[0]; rp2.paragraph_format.left_indent=Pt(4)
@@ -278,7 +291,7 @@ def generate_quote(solicitation, vendor, line_items):
     for ci,w in enumerate(cw): lt.columns[ci].width=w
     hr=lt.rows[0]
     for ci,h in enumerate(hdrs):
-        c=hr.cells[ci]; bg(c,"0D2B55"); c.width=cw[ci]
+        c=hr.cells[ci]; bg(c,"1A1A1A"); c.width=cw[ci]
         p=c.paragraphs[0]; p.alignment=WD_ALIGN_PARAGRAPH.CENTER
         run(p,h,bold=True,size=9,color=WHITE)
     grand=0.0
@@ -295,7 +308,7 @@ def generate_quote(solicitation, vendor, line_items):
             p=c.paragraphs[0]; p.alignment=al; p.paragraph_format.left_indent=Pt(3)
             run(p,val,size=9,color=DGRAY)
     tr=lt.rows[-1]
-    for ci in range(6): bg(tr.cells[ci],"E8EDF3"); tr.cells[ci].width=cw[ci]
+    for ci in range(6): bg(tr.cells[ci],"F0F0F0"); tr.cells[ci].width=cw[ci]
     tr.cells[0].merge(tr.cells[3])
     tp=tr.cells[0].paragraphs[0]; tp.alignment=WD_ALIGN_PARAGRAPH.RIGHT
     run(tp,"GRAND TOTAL",bold=True,size=10,color=NAVY)
