@@ -168,12 +168,63 @@ def extract_data(text, api_key=""):
     rules["_method"] = "rules"
     return rules
 
+# ── LINE ITEM EXTRACTOR ───────────────────────────────────────────────────────
+
+def extract_line_items(solicitation, text):
+    """
+    Derive line items from extracted solicitation data and raw text.
+    Returns list of dicts: {description, size, qty, unit_price}.
+    Any field that cannot be determined is set to the string "N/A".
+    """
+    base_desc = (solicitation.get("project_title") or
+                 solicitation.get("solicitation_number") or "N/A")
+    items = []
+
+    # 1. Use size/qty pairs already pulled by the rules engine
+    quantities = solicitation.get("quantities", [])
+    if quantities:
+        for q in quantities:
+            try:
+                qty_val = int(q.get("qty", "N/A"))
+            except (ValueError, TypeError):
+                qty_val = "N/A"
+            items.append({
+                "description": base_desc,
+                "size":        q.get("size", "N/A") or "N/A",
+                "qty":         qty_val,
+                "unit_price":  "N/A",
+            })
+        return items
+
+    # 2. Look for CLIN-style line items
+    clin_blocks = re.findall(
+        r"(?:CLIN|LINE\s*ITEM)\s*(\d{3,4})\s+(.*?)(?=CLIN|LINE\s*ITEM|\Z)",
+        text, re.IGNORECASE | re.DOTALL
+    )
+    if clin_blocks:
+        for _clin_num, block in clin_blocks:
+            block = re.sub(r"\s+", " ", block).strip()
+            qty_m = re.search(r"(?:QTY|Quantity)[:\s]*(\d+)", block, re.IGNORECASE)
+            qty_val = int(qty_m.group(1)) if qty_m else "N/A"
+            items.append({
+                "description": block[:120] or base_desc,
+                "size":        "N/A",
+                "qty":         qty_val,
+                "unit_price":  "N/A",
+            })
+        return items
+
+    # 3. Fallback: single row from project title
+    items.append({"description": base_desc, "size": "N/A", "qty": "N/A", "unit_price": "N/A"})
+    return items
+
 # ── QUOTE GENERATOR ──────────────────────────────────────────────────────────
 
 def generate_quote(solicitation, vendor, line_items):
     from docx import Document
     from docx.shared import Pt, Inches, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.table import WD_TABLE_ALIGNMENT
     from docx.oxml.ns import qn
     from docx.oxml import OxmlElement
     import datetime
@@ -202,33 +253,67 @@ def generate_quote(solicitation, vendor, line_items):
     def heading(txt, sb=14):
         p = doc.add_paragraph()
         p.paragraph_format.space_before=Pt(sb); p.paragraph_format.space_after=Pt(4)
+        p.paragraph_format.keep_with_next = True
         run(p, txt, bold=True, size=11, color=NAVY)
         pr = p._p.get_or_add_pPr(); bd = OxmlElement("w:pBdr")
         b = OxmlElement("w:bottom"); b.set(qn("w:val"),"single"); b.set(qn("w:sz"),"6")
         b.set(qn("w:space"),"1"); b.set(qn("w:color"),"1A1A1A"); bd.append(b); pr.append(bd)
 
+    def row_keep(row, header=False):
+        tr = row._tr
+        trPr = tr.find(qn('w:trPr'))
+        if trPr is None:
+            trPr = OxmlElement('w:trPr'); tr.insert(0, trPr)
+        cant = OxmlElement('w:cantSplit'); cant.set(qn('w:val'), '1')
+        trPr.append(cant)
+        if header:
+            th = OxmlElement('w:tblHeader'); th.set(qn('w:val'), '1')
+            trPr.append(th)
+
+    def fmt_num(v):
+        """Return float for a numeric value, or None if it is N/A / blank / unparseable."""
+        if v in ("N/A", "", None): return None
+        try: return float(v)
+        except (ValueError, TypeError): return None
+
+    def no_borders(table):
+        tbl = table._tbl
+        tblPr = tbl.find(qn('w:tblPr'))
+        if tblPr is None:
+            tblPr = OxmlElement('w:tblPr'); tbl.insert(0, tblPr)
+        for existing in tblPr.findall(qn('w:tblBorders')):
+            tblPr.remove(existing)
+        tblBorders = OxmlElement('w:tblBorders')
+        for side in ('top','left','bottom','right','insideH','insideV'):
+            el = OxmlElement(f'w:{side}')
+            el.set(qn('w:val'), 'none'); el.set(qn('w:sz'), '0'); el.set(qn('w:color'), 'auto')
+            tblBorders.append(el)
+        tblPr.append(tblBorders)
+
     today = datetime.date.today().strftime("%B %d, %Y")
 
 # Header table
     ht = doc.add_table(rows=1, cols=2); ht.style="Table Grid"; ht.autofit=False
-    ht.columns[0].width=Inches(3.5); ht.columns[1].width=Inches(3.25)
+    ht.columns[0].width=Inches(3.0); ht.columns[1].width=Inches(3.0)
+    ht.alignment = WD_TABLE_ALIGNMENT.CENTER
     lc=ht.cell(0,0); rc=ht.cell(0,1)
-    bg(lc,"1A1A1A"); bg(rc,"F5F5F5")
+    bg(lc,"EFEFEF"); bg(rc,"F5F5F5")
+    no_borders(ht)
 
-    # Left cell — company info (all white text on black background)
+    # Left cell — company info
     lp=lc.paragraphs[0]
     lp.paragraph_format.space_before=Pt(10)
     lp.paragraph_format.left_indent=Pt(10)
-    run(lp, vendor.get("company_name","Your Company"), bold=True, size=15, color=WHITE)
+    run(lp, vendor.get("company_name","Your Company"), bold=True, size=15, color=NAVY)
     for f in ["address","city_state_zip","phone","email","website"]:
         val=vendor.get(f,"")
         if val:
             fp=lc.add_paragraph()
             fp.paragraph_format.left_indent=Pt(10)
-            run(fp, val, size=9, color=WHITE)
+            run(fp, val, size=9, color=DGRAY)
     pad=lc.add_paragraph()
     pad.paragraph_format.left_indent=Pt(10)
-    run(pad, " ", size=9, color=WHITE)
+    run(pad, " ", size=9, color=DGRAY)
 
     # Right cell — quote metadata (dark text on light background)
     rp=rc.paragraphs[0]
@@ -267,8 +352,10 @@ def generate_quote(solicitation, vendor, line_items):
     fields=[(l,v) for l,v in fields if v]
     if fields:
         st=doc.add_table(rows=len(fields),cols=2); st.style="Table Grid"; st.autofit=False
-        st.columns[0].width=Inches(2.2); st.columns[1].width=Inches(4.55)
+        st.columns[0].width=Inches(2.0); st.columns[1].width=Inches(4.0)
+        st.alignment = WD_TABLE_ALIGNMENT.CENTER
         for i,(label,value) in enumerate(fields):
+            row_keep(st.rows[i])
             lc2=st.cell(i,0); rc2=st.cell(i,1)
             bg(lc2,"F0F0F0")
             lp2=lc2.paragraphs[0]; lp2.paragraph_format.left_indent=Pt(4)
@@ -285,29 +372,38 @@ def generate_quote(solicitation, vendor, line_items):
 
     # Line items
     heading("QUOTE DETAILS")
-    cw=[Inches(0.45),Inches(2.9),Inches(0.7),Inches(0.75),Inches(0.95),Inches(0.95)]
+    cw=[Inches(0.4),Inches(2.6),Inches(0.6),Inches(0.65),Inches(0.85),Inches(0.9)]
     hdrs=["#","Description / Item","Size/Type","Qty","Unit Price","Total"]
     lt=doc.add_table(rows=1+len(line_items)+1,cols=6); lt.style="Table Grid"; lt.autofit=False
+    lt.alignment = WD_TABLE_ALIGNMENT.CENTER
     for ci,w in enumerate(cw): lt.columns[ci].width=w
     hr=lt.rows[0]
+    row_keep(hr, header=True)
     for ci,h in enumerate(hdrs):
         c=hr.cells[ci]; bg(c,"1A1A1A"); c.width=cw[ci]
         p=c.paragraphs[0]; p.alignment=WD_ALIGN_PARAGRAPH.CENTER
         run(p,h,bold=True,size=9,color=WHITE)
-    grand=0.0
+    grand=0.0; has_any_price=False
     AL=[WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.LEFT,WD_ALIGN_PARAGRAPH.CENTER,
         WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.RIGHT,WD_ALIGN_PARAGRAPH.RIGHT]
     for i,item in enumerate(line_items):
-        row=lt.rows[i+1]; qty=float(item.get("qty",0) or 0)
-        up=float(item.get("unit_price",0) or 0); total=qty*up; grand+=total
+        row=lt.rows[i+1]; row_keep(row)
+        qty_n = fmt_num(item.get("qty"))
+        up_n  = fmt_num(item.get("unit_price"))
+        total_n = (qty_n * up_n) if (qty_n is not None and up_n is not None) else None
+        if total_n is not None: grand += total_n; has_any_price = True
         bcolor="FFFFFF" if i%2==0 else "F7F9FC"
-        vals=[str(i+1),item.get("description",""),item.get("size",""),
-              str(int(qty)) if qty==int(qty) else str(qty),f"${up:,.2f}",f"${total:,.2f}"]
+        qty_s   = (str(int(qty_n)) if qty_n == int(qty_n) else str(qty_n)) if qty_n is not None else "N/A"
+        up_s    = f"${up_n:,.2f}" if up_n is not None else "N/A"
+        total_s = f"${total_n:,.2f}" if total_n is not None else "N/A"
+        desc    = item.get("description","") or "N/A"
+        size    = item.get("size","") or "N/A"
+        vals=[str(i+1), desc, size, qty_s, up_s, total_s]
         for ci,(val,al,w) in enumerate(zip(vals,AL,cw)):
             c=row.cells[ci]; bg(c,bcolor); c.width=w
             p=c.paragraphs[0]; p.alignment=al; p.paragraph_format.left_indent=Pt(3)
             run(p,val,size=9,color=DGRAY)
-    tr=lt.rows[-1]
+    tr=lt.rows[-1]; row_keep(tr)
     for ci in range(6): bg(tr.cells[ci],"F0F0F0"); tr.cells[ci].width=cw[ci]
     tr.cells[0].merge(tr.cells[3])
     tp=tr.cells[0].paragraphs[0]; tp.alignment=WD_ALIGN_PARAGRAPH.RIGHT
@@ -316,7 +412,8 @@ def generate_quote(solicitation, vendor, line_items):
     tax_rate=float(vendor.get("tax_rate",0) or 0)
     tax=grand*(tax_rate/100); final=grand+freight+tax
     gp=tr.cells[-1].paragraphs[0]; gp.alignment=WD_ALIGN_PARAGRAPH.RIGHT
-    run(gp,f"${final:,.2f}",bold=True,size=11,color=NAVY)
+    final_s = f"${final:,.2f}" if (has_any_price or freight>0) else "N/A"
+    run(gp,final_s,bold=True,size=11,color=NAVY)
 
     # Notes & Terms
     notes=vendor.get("notes",""); terms=vendor.get("terms","")
@@ -332,7 +429,9 @@ def generate_quote(solicitation, vendor, line_items):
     # Signature
     heading("AUTHORIZED SIGNATURE", sb=18)
     sigt=doc.add_table(rows=1,cols=2); sigt.style="Table Grid"; sigt.autofit=False
-    sigt.columns[0].width=Inches(3.5); sigt.columns[1].width=Inches(3.25)
+    sigt.columns[0].width=Inches(3.0); sigt.columns[1].width=Inches(3.0)
+    sigt.alignment = WD_TABLE_ALIGNMENT.CENTER
+    row_keep(sigt.rows[0])
     lsc=sigt.cell(0,0); rsc=sigt.cell(0,1)
     def sigline(cell,label,value=""):
         p=cell.add_paragraph(); p.paragraph_format.left_indent=Pt(6); p.paragraph_format.space_after=Pt(10)

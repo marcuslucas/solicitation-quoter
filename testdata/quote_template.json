@@ -1,0 +1,49 @@
+{
+  "_instructions": {
+    "vendor": "Fill in your company details. Leave any field blank (\"\") to omit it from the quote.",
+    "line_items": "Add one object per line item. Remove or duplicate the example rows as needed.",
+    "freight": "Flat freight charge in dollars, e.g. 150. Use 0 for none.",
+    "tax_rate": "Tax percentage, e.g. 8.5 for 8.5%. Use 0 for none.",
+    "qty": "Whole numbers only.",
+    "unit_price": "Dollars, e.g. 38.50"
+  },
+
+  "vendor": {
+    "company_name": "CHI Strategic",
+    "address": "13 Copley Rd",
+    "city_state_zip": "Larchmont, NY 10538",
+    "phone": "555-555-1000",
+    "email": "CHI@CHI.com",
+    "website": "CHI.com",
+    "sam_uei": "ABCDE1234FG5 [SAM UEI]",
+    "quote_number": "[QUOTE NUM]",
+    "prepared_by": "Marcus",
+    "title": "",
+    "validity_period": "30 days",
+    "freight": 0,
+    "tax_rate": 0,
+    "notes": "",
+    "terms": ""
+  },
+
+  "line_items": [
+    {
+      "description": "",
+      "size": "",
+      "qty": 0,
+      "unit_price": 0
+    },
+    {
+      "description": "",
+      "size": "",
+      "qty": 0,
+      "unit_price": 0
+    },
+    {
+      "description": "",
+      "size": "",
+      "qty": 0,
+      "unit_price": 0
+    }
+  ]
+}

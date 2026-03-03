@@ -6,3 +6,7 @@ build/
 __pycache__/
 *.pyc
 *.pyo
+testdata/output/
+testdata/*.pdf
+testdata/*.txt
+testdata/*.docx
