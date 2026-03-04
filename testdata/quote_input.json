@@ -14,84 +14,103 @@
     "freight": 0,
     "tax_rate": 0,
     "notes": "All items are Berry Amendment compliant and manufactured in the USA. Size exchanges honored within 60 days of delivery at no charge.",
-    "terms": "Net 30. Delivery within 30 days of award. FOB Destination."
+    "terms": "Net 30. Delivery within 30 days of award. FOB Destination.",
+    "logo_b64": "",
+    "logo_ext": "",
+    "logo_name": "",
+    "delivery_days": "30",
+    "option_years_enabled": false,
+    "option_years": []
   },
   "line_items": [
     {
       "description": "Work Shirt, Long Sleeve, OSHA Hi-Vis Class 2 — S",
       "size": "S",
+      "unit": "EA",
       "qty": 18,
       "unit_price": 38.50
     },
     {
       "description": "Work Shirt, Long Sleeve, OSHA Hi-Vis Class 2 — M",
       "size": "M",
+      "unit": "EA",
       "qty": 36,
       "unit_price": 38.50
     },
     {
       "description": "Work Shirt, Long Sleeve, OSHA Hi-Vis Class 2 — L",
       "size": "L",
+      "unit": "EA",
       "qty": 42,
       "unit_price": 38.50
     },
     {
       "description": "Work Shirt, Long Sleeve, OSHA Hi-Vis Class 2 — XL",
       "size": "XL",
+      "unit": "EA",
       "qty": 14,
       "unit_price": 38.50
     },
     {
       "description": "Work Shirt, Long Sleeve, OSHA Hi-Vis Class 2 — XXL",
       "size": "XXL",
+      "unit": "EA",
       "qty": 8,
       "unit_price": 40.00
     },
     {
       "description": "Work Shirt, Long Sleeve, OSHA Hi-Vis Class 2 — 2XL",
       "size": "2XL",
+      "unit": "EA",
       "qty": 2,
       "unit_price": 42.00
     },
     {
       "description": "Cargo Work Pant, Navy — S",
       "size": "S",
+      "unit": "EA",
       "qty": 10,
       "unit_price": 44.00
     },
     {
       "description": "Cargo Work Pant, Navy — M",
       "size": "M",
+      "unit": "EA",
       "qty": 38,
       "unit_price": 44.00
     },
     {
       "description": "Cargo Work Pant, Navy — L",
       "size": "L",
+      "unit": "EA",
       "qty": 44,
       "unit_price": 44.00
     },
     {
       "description": "Cargo Work Pant, Navy — XL",
       "size": "XL",
+      "unit": "EA",
       "qty": 18,
       "unit_price": 44.00
     },
     {
       "description": "Cargo Work Pant, Navy — XXL",
       "size": "XXL",
+      "unit": "EA",
       "qty": 8,
       "unit_price": 46.00
     },
     {
       "description": "Cargo Work Pant, Navy — 2XL",
       "size": "2XL",
+      "unit": "EA",
       "qty": 2,
       "unit_price": 48.00
     },
     {
       "description": "Safety Boot, Steel Toe, 6-inch (pair)",
       "size": "Assorted",
+      "unit": "PR",
       "qty": 120,
       "unit_price": 112.00
     }

@@ -23,25 +23,34 @@
     "freight": 0,
     "tax_rate": 0,
     "notes": "",
-    "terms": ""
+    "terms": "",
+    "logo_b64": "",
+    "logo_ext": "",
+    "logo_name": "",
+    "delivery_days": "",
+    "option_years_enabled": false,
+    "option_years": []
   },
 
   "line_items": [
     {
       "description": "",
       "size": "",
+      "unit": "",
       "qty": 0,
       "unit_price": 0
     },
     {
       "description": "",
       "size": "",
+      "unit": "",
       "qty": 0,
       "unit_price": 0
     },
     {
       "description": "",
       "size": "",
+      "unit": "",
       "qty": 0,
       "unit_price": 0
     }

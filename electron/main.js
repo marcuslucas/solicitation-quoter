@@ -61,7 +61,7 @@ async function createWindow() {
   win = new BrowserWindow({
     width: 1280, height: 860, minWidth: 1000, minHeight: 700,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    backgroundColor: '#0F1923', show: false,
+    backgroundColor: '#0D1117', show: false,
     webPreferences: { preload: path.join(__dirname,'preload.js'), contextIsolation: true, nodeIntegration: false }
   })
   win.loadFile(path.join(__dirname, 'loading.html'))
@@ -93,6 +93,20 @@ ipcMain.handle('save-quote', async (_, { bytes, name }) => {
   return { success: false }
 })
 ipcMain.handle('open-url', (_, url) => shell.openExternal(url))
+ipcMain.handle('pick-logo', async () => {
+  const r = await dialog.showOpenDialog(win, {
+    properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: ['png','jpg','jpeg'] }]
+  })
+  if (r.canceled || !r.filePaths[0]) return { canceled: true }
+  const buf = fs.readFileSync(r.filePaths[0])
+  return {
+    canceled: false,
+    b64: buf.toString('base64'),
+    ext: path.extname(r.filePaths[0]).replace('.','').toLowerCase(),
+    name: path.basename(r.filePaths[0])
+  }
+})
 
 app.whenReady().then(createWindow)
 app.on('window-all-closed', () => { kill(); if (process.platform !== 'darwin') app.quit() })

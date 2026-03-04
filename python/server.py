@@ -142,11 +142,12 @@ def ai_extract(text, api_key):
 solicitation_number, project_title, solicitation_type, issuing_agency, contracting_office_address,
 due_date, posting_date, contact_name, contact_email, contact_phone, naics_code, psc_code, set_aside,
 place_of_performance, contract_type, period_of_performance, estimated_value, scope_of_work,
-quantities (array of {{size,qty}}), special_requirements (array of strings), attachments (array of strings)
+quantities (array of {{size,qty}}), special_requirements (array of strings), attachments (array of strings),
+line_items (array of {{description, size, unit, qty, unit_price}} — extract from CLIN tables or item lists if present; use empty string for unknown unit_price)
 
 SOLICITATION:
 {text}"""
-    resp = client.messages.create(model="claude-sonnet-4-20250514", max_tokens=2000,
+    resp = client.messages.create(model="claude-sonnet-4-6", max_tokens=2000,
                                    messages=[{"role":"user","content":prompt}])
     raw = re.sub(r"^```(?:json)?\s*","",resp.content[0].text.strip())
     raw = re.sub(r"\s*```$","",raw)
@@ -161,6 +162,9 @@ def extract_data(text, api_key=""):
             for k,v in ai.items():
                 if v and v != "" and v != [] and v != {}:
                     merged[k] = v
+            # Store AI line items separately so extractor can prefer them
+            if ai.get("line_items"):
+                merged["ai_line_items"] = ai["line_items"]
             merged["_method"] = "ai+rules"
             return merged
         except Exception as e:
@@ -173,12 +177,25 @@ def extract_data(text, api_key=""):
 def extract_line_items(solicitation, text):
     """
     Derive line items from extracted solicitation data and raw text.
-    Returns list of dicts: {description, size, qty, unit_price}.
+    Returns list of dicts: {description, size, unit, qty, unit_price}.
     Any field that cannot be determined is set to the string "N/A".
     """
     base_desc = (solicitation.get("project_title") or
                  solicitation.get("solicitation_number") or "N/A")
     items = []
+
+    # 0. Use AI-extracted line items if available (best quality)
+    ai_items = solicitation.get("ai_line_items", [])
+    if ai_items:
+        for it in ai_items:
+            items.append({
+                "description": it.get("description", base_desc) or base_desc,
+                "size":        it.get("size", "N/A") or "N/A",
+                "unit":        it.get("unit", "EA") or "EA",
+                "qty":         it.get("qty", "N/A"),
+                "unit_price":  it.get("unit_price", "N/A"),
+            })
+        return items
 
     # 1. Use size/qty pairs already pulled by the rules engine
     quantities = solicitation.get("quantities", [])
@@ -191,6 +208,7 @@ def extract_line_items(solicitation, text):
             items.append({
                 "description": base_desc,
                 "size":        q.get("size", "N/A") or "N/A",
+                "unit":        "EA",
                 "qty":         qty_val,
                 "unit_price":  "N/A",
             })
@@ -198,24 +216,27 @@ def extract_line_items(solicitation, text):
 
     # 2. Look for CLIN-style line items
     clin_blocks = re.findall(
-        r"(?:CLIN|LINE\s*ITEM)\s*(\d{3,4})\s+(.*?)(?=CLIN|LINE\s*ITEM|\Z)",
+        r"(?:CLIN|LINE\s*ITEM|ITEM)\s*(\d{1,4})\s+(.*?)(?=(?:CLIN|LINE\s*ITEM|ITEM)\s*\d|\Z)",
         text, re.IGNORECASE | re.DOTALL
     )
     if clin_blocks:
         for _clin_num, block in clin_blocks:
             block = re.sub(r"\s+", " ", block).strip()
             qty_m = re.search(r"(?:QTY|Quantity)[:\s]*(\d+)", block, re.IGNORECASE)
+            up_m  = re.search(r"(?:Unit\s+Price|UNIT\s+PRICE|UP)[:\s]*\$?([\d,\.]+)", block, re.IGNORECASE)
             qty_val = int(qty_m.group(1)) if qty_m else "N/A"
+            up_val  = float(up_m.group(1).replace(",","")) if up_m else "N/A"
             items.append({
                 "description": block[:120] or base_desc,
                 "size":        "N/A",
+                "unit":        "EA",
                 "qty":         qty_val,
-                "unit_price":  "N/A",
+                "unit_price":  up_val,
             })
         return items
 
     # 3. Fallback: single row from project title
-    items.append({"description": base_desc, "size": "N/A", "qty": "N/A", "unit_price": "N/A"})
+    items.append({"description": base_desc, "size": "N/A", "unit": "EA", "qty": "N/A", "unit_price": "N/A"})
     return items
 
 # ── QUOTE GENERATOR ──────────────────────────────────────────────────────────
@@ -300,8 +321,23 @@ def generate_quote(solicitation, vendor, line_items):
     bg(lc,"EFEFEF"); bg(rc,"F5F5F5")
     no_borders(ht)
 
-    # Left cell — company info
-    lp=lc.paragraphs[0]
+    # Left cell — company info (logo if provided)
+    logo_b64 = vendor.get("logo_b64","")
+    if logo_b64:
+        try:
+            import base64 as _b64
+            logo_bytes = _b64.b64decode(logo_b64)
+            logo_stream = io.BytesIO(logo_bytes)
+            logo_p = lc.paragraphs[0]
+            logo_p.paragraph_format.space_before = Pt(8)
+            logo_p.paragraph_format.left_indent = Pt(10)
+            logo_p.add_run().add_picture(logo_stream, width=Inches(1.4))
+            lp = lc.add_paragraph()
+        except Exception as _e:
+            print(f"Logo insert failed: {_e}")
+            lp = lc.paragraphs[0]
+    else:
+        lp = lc.paragraphs[0]
     lp.paragraph_format.space_before=Pt(10)
     lp.paragraph_format.left_indent=Pt(10)
     run(lp, vendor.get("company_name","Your Company"), bold=True, size=15, color=NAVY)
@@ -325,6 +361,7 @@ def generate_quote(solicitation, vendor, line_items):
         ("Date", today),
         ("Solicitation #", solicitation.get("solicitation_number","")),
         ("Valid For", vendor.get("validity_period","30 days")),
+        ("Delivery", f"{vendor.get('delivery_days','')} days ARO" if vendor.get("delivery_days") else ""),
         ("Prepared By", vendor.get("prepared_by","")),
     ]:
         if value:
@@ -372,9 +409,9 @@ def generate_quote(solicitation, vendor, line_items):
 
     # Line items
     heading("QUOTE DETAILS")
-    cw=[Inches(0.4),Inches(2.6),Inches(0.6),Inches(0.65),Inches(0.85),Inches(0.9)]
-    hdrs=["#","Description / Item","Size/Type","Qty","Unit Price","Total"]
-    lt=doc.add_table(rows=1+len(line_items)+1,cols=6); lt.style="Table Grid"; lt.autofit=False
+    cw=[Inches(0.35),Inches(2.1),Inches(0.55),Inches(0.6),Inches(0.55),Inches(0.85),Inches(1.0)]
+    hdrs=["#","Description / Item","Size/Type","UOM","Qty","Unit Price","Total"]
+    lt=doc.add_table(rows=1+len(line_items)+1,cols=7); lt.style="Table Grid"; lt.autofit=False
     lt.alignment = WD_TABLE_ALIGNMENT.CENTER
     for ci,w in enumerate(cw): lt.columns[ci].width=w
     hr=lt.rows[0]
@@ -385,7 +422,8 @@ def generate_quote(solicitation, vendor, line_items):
         run(p,h,bold=True,size=9,color=WHITE)
     grand=0.0; has_any_price=False
     AL=[WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.LEFT,WD_ALIGN_PARAGRAPH.CENTER,
-        WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.RIGHT,WD_ALIGN_PARAGRAPH.RIGHT]
+        WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.RIGHT,
+        WD_ALIGN_PARAGRAPH.RIGHT]
     for i,item in enumerate(line_items):
         row=lt.rows[i+1]; row_keep(row)
         qty_n = fmt_num(item.get("qty"))
@@ -398,14 +436,15 @@ def generate_quote(solicitation, vendor, line_items):
         total_s = f"${total_n:,.2f}" if total_n is not None else "N/A"
         desc    = item.get("description","") or "N/A"
         size    = item.get("size","") or "N/A"
-        vals=[str(i+1), desc, size, qty_s, up_s, total_s]
+        unit    = item.get("unit","EA") or "EA"
+        vals=[str(i+1), desc, size, unit, qty_s, up_s, total_s]
         for ci,(val,al,w) in enumerate(zip(vals,AL,cw)):
             c=row.cells[ci]; bg(c,bcolor); c.width=w
             p=c.paragraphs[0]; p.alignment=al; p.paragraph_format.left_indent=Pt(3)
             run(p,val,size=9,color=DGRAY)
     tr=lt.rows[-1]; row_keep(tr)
-    for ci in range(6): bg(tr.cells[ci],"F0F0F0"); tr.cells[ci].width=cw[ci]
-    tr.cells[0].merge(tr.cells[3])
+    for ci in range(7): bg(tr.cells[ci],"F0F0F0"); tr.cells[ci].width=cw[ci]
+    tr.cells[0].merge(tr.cells[4])
     tp=tr.cells[0].paragraphs[0]; tp.alignment=WD_ALIGN_PARAGRAPH.RIGHT
     run(tp,"GRAND TOTAL",bold=True,size=10,color=NAVY)
     freight=float(vendor.get("freight",0) or 0)
@@ -425,6 +464,30 @@ def generate_quote(solicitation, vendor, line_items):
         if terms:
             tp2=doc.add_paragraph(); tp2.paragraph_format.left_indent=Inches(0.1)
             run(tp2,"Terms: ",bold=True,size=9.5,color=NAVY); run(tp2,terms,size=9.5,color=DGRAY)
+
+    # Option years summary
+    option_years = vendor.get("option_years", [])
+    if vendor.get("option_years_enabled") and option_years and has_any_price:
+        base_total = grand + freight + tax
+        heading("OPTION YEAR PRICING SUMMARY")
+        oy_rows = [("Base Year (Year 1)", base_total)]
+        for oy in option_years:
+            pct = float(oy.get("pct", 0) or 0)
+            oy_rows.append((oy.get("label","Option Year"), base_total * (1 + pct / 100)))
+        oy_rows.append(("TOTAL — All Periods", sum(r[1] for r in oy_rows)))
+        ot = doc.add_table(rows=len(oy_rows), cols=2); ot.style="Table Grid"; ot.autofit=False
+        ot.columns[0].width = Inches(3.5); ot.columns[1].width = Inches(2.5)
+        ot.alignment = WD_TABLE_ALIGNMENT.CENTER
+        for i,(period,total_oy) in enumerate(oy_rows):
+            row_keep(ot.rows[i])
+            is_last = (i == len(oy_rows) - 1)
+            lc3=ot.cell(i,0); rc3=ot.cell(i,1)
+            bg(lc3,"F0F0F0" if (i==0 or is_last) else "FFFFFF")
+            bg(rc3,"F0F0F0" if (i==0 or is_last) else "FFFFFF")
+            lp3=lc3.paragraphs[0]; lp3.paragraph_format.left_indent=Pt(4)
+            run(lp3,period,bold=is_last,size=9,color=NAVY)
+            rp3=rc3.paragraphs[0]; rp3.alignment=WD_ALIGN_PARAGRAPH.RIGHT
+            run(rp3,f"${total_oy:,.2f}",bold=is_last,size=9,color=NAVY if is_last else DGRAY)
 
     # Signature
     heading("AUTHORIZED SIGNATURE", sb=18)
@@ -481,6 +544,76 @@ def gen_route():
             mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             as_attachment=True, download_name=f"Quote_{sol}.docx")
     except Exception as e:
+        traceback.print_exc(); return jsonify({"error":str(e)}),500
+
+@app.route("/sam_lookup", methods=["POST","OPTIONS"])
+def sam_lookup():
+    if request.method=="OPTIONS": return jsonify({}),200
+    try:
+        body=request.get_json()
+        notice_id=body.get("notice_id","").strip()
+        api_key=body.get("api_key","").strip()
+        if not notice_id: return jsonify({"error":"Notice ID is required"}),400
+        if not api_key:   return jsonify({"error":"SAM.gov API key is required"}),400
+
+        from datetime import datetime,timedelta
+        import urllib.request as _ur, urllib.parse as _up
+        today=datetime.now(); ago=today-timedelta(days=365)
+        params=_up.urlencode({"api_key":api_key,"noticeid":notice_id,
+                               "postedFrom":ago.strftime("%m/%d/%Y"),
+                               "postedTo":today.strftime("%m/%d/%Y"),"limit":1})
+        url=f"https://api.sam.gov/opportunities/v2/search?{params}"
+        req=_ur.Request(url,headers={"Accept":"application/json","User-Agent":"SolicitationQuoter/1.0"})
+        with _ur.urlopen(req,timeout=15) as resp:
+            data=json.loads(resp.read())
+
+        opps=data.get("opportunitiesData",[])
+        if not opps: return jsonify({"error":f"No opportunity found for: {notice_id}"}),404
+        opp=opps[0]
+
+        desc_raw=opp.get("description","")
+        desc=re.sub(r"\s+"," ",re.sub(r"<[^>]+>"," ",desc_raw)).strip()
+
+        solicitation={
+            "solicitation_number": opp.get("solicitationNumber") or opp.get("noticeId",""),
+            "project_title":       opp.get("title",""),
+            "solicitation_type":   opp.get("type",""),
+            "issuing_agency":      opp.get("fullParentPathName",""),
+            "due_date":            opp.get("responseDeadLine",""),
+            "posting_date":        opp.get("postedDate",""),
+            "naics_code":          opp.get("naicsCode",""),
+            "psc_code":            opp.get("classificationCode",""),
+            "set_aside":           opp.get("typeOfSetAsideDescription") or opp.get("typeOfSetAside",""),
+            "scope_of_work":       desc[:3000],
+        }
+        pop=opp.get("placeOfPerformance",{})
+        if pop:
+            city=pop.get("city",{}).get("name",""); state=pop.get("state",{}).get("code","")
+            if city or state: solicitation["place_of_performance"]=f"{city}, {state}".strip(", ")
+        contacts=opp.get("pointOfContact",[])
+        if contacts:
+            c=contacts[0]
+            solicitation["contact_name"]=c.get("fullName","")
+            solicitation["contact_email"]=c.get("email","")
+            solicitation["contact_phone"]=c.get("phone","")
+        office=opp.get("officeAddress",{})
+        if office:
+            solicitation["contracting_office_address"]=" ".join(
+                filter(None,[office.get("city",""),office.get("state",""),office.get("zipcode","")]))
+
+        solicitation["_method"]="sam_gov"
+        # Also run rule-based extraction on desc for quantities
+        rules=extract(desc)
+        for k,v in rules.items():
+            if v and k not in solicitation: solicitation[k]=v
+
+        line_items=extract_line_items(solicitation, desc)
+        return jsonify({"success":True,"data":solicitation,"line_items":line_items})
+
+    except Exception as e:
+        import urllib.error
+        if isinstance(e,urllib.error.HTTPError) and e.code==403:
+            return jsonify({"error":"Invalid or expired SAM.gov API key"}),400
         traceback.print_exc(); return jsonify({"error":str(e)}),500
 
 if __name__=="__main__":
