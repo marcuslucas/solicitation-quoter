@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 @app.after_request
 def cors(r):
-    r.headers["Access-Control-Allow-Origin"] = "*"
+    r.headers["Access-Control-Allow-Origin"] = "http://127.0.0.1:5199"
     r.headers["Access-Control-Allow-Headers"] = "Content-Type"
     r.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return r
@@ -612,9 +612,17 @@ def sam_lookup():
 
     except Exception as e:
         import urllib.error
-        if isinstance(e,urllib.error.HTTPError) and e.code==403:
-            return jsonify({"error":"Invalid or expired SAM.gov API key"}),400
-        traceback.print_exc(); return jsonify({"error":str(e)}),500
+        if isinstance(e, urllib.error.HTTPError):
+            if e.code == 403:
+                return jsonify({"error": "Invalid or expired SAM.gov API key."}), 400
+            return jsonify({"error": f"SAM.gov returned an error (HTTP {e.code}). Try again later."}), 502
+        if isinstance(e, urllib.error.URLError):
+            if 'timed out' in str(e).lower() or isinstance(getattr(e, 'reason', None), Exception) and 'timed out' in str(e.reason).lower():
+                return jsonify({"error": "SAM.gov did not respond in time. Check your connection and try again."}), 504
+            return jsonify({"error": f"Could not reach SAM.gov. Check your internet connection."}), 503
+        if isinstance(e, (ValueError, KeyError)):
+            return jsonify({"error": "SAM.gov returned an unexpected response. Try again later."}), 502
+        traceback.print_exc(); return jsonify({"error": str(e)}), 500
 
 if __name__=="__main__":
     port=int(os.environ.get("PORT",5199))

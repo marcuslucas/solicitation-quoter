@@ -149,7 +149,7 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
       </div>
     </nav>
     <div class="sidebar-footer">
-      <div class="settings-btn" onclick="openSettings()">⚙️ &nbsp;Settings</div>
+      <div class="settings-btn" onclick="openSettings()">Settings</div>
     </div>
   </div>
 
@@ -163,10 +163,50 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
   </div>
 </div>
 
+<!-- AI EXTRACTION MODAL -->
+<div class="overlay hidden" id="ai-modal-overlay" onclick="if(event.target===this)closeAiModal()">
+  <div class="modal">
+    <h2>AI Extraction</h2>
+    <div class="field" style="margin-bottom:14px">
+      <label>Anthropic API Key</label>
+      <input type="password" id="m-apikey" placeholder="sk-ant-..." />
+      <span class="text-muted" style="font-size:11px;margin-top:4px">Enables smarter extraction of complex or non-standard documents. Without a key, rule-based extraction works well for standard SAM.gov formats. Stored locally only — never sent anywhere except the local backend.</span>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAiModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAiKey()">Save &amp; Use</button>
+    </div>
+  </div>
+</div>
+
+<!-- SAM.GOV LOOKUP MODAL -->
+<div class="overlay hidden" id="sam-modal-overlay" onclick="if(event.target===this)closeSamModal()">
+  <div class="modal">
+    <h2>SAM.gov Lookup</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Fetch solicitation data directly from SAM.gov by Notice ID — no file upload needed.</p>
+    <div class="field" style="margin-bottom:12px">
+      <label>Notice ID</label>
+      <input id="sam-noticeid" placeholder="e.g. W911S225U1431" oninput="S.samNoticeId=this.value" />
+    </div>
+    <div class="field" style="margin-bottom:14px">
+      <label>SAM.gov API Key</label>
+      <input type="password" id="sam-key" placeholder="From sam.gov account → API keys" />
+      <span class="text-muted" style="font-size:11px;margin-top:4px">Free account required. Keys expire every 90 days.</span>
+    </div>
+    <div id="sam-prog" class="hidden" style="margin-bottom:12px"><div class="alert alert-info"><div class="spin"></div><span style="margin-left:8px">Fetching from SAM.gov...</span></div></div>
+    <div id="sam-err" class="hidden" style="margin-bottom:12px"></div>
+    <div id="sam-ok" class="hidden" style="margin-bottom:12px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSamModal()">Cancel</button>
+      <button class="btn btn-primary" id="sam-btn" onclick="doSamLookup()">Fetch from SAM.gov</button>
+    </div>
+  </div>
+</div>
+
 <!-- SETTINGS -->
 <div class="overlay hidden" id="settings-overlay" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
-    <h2>⚙️ Settings</h2>
+    <h2>Settings</h2>
     <div class="field" style="margin-bottom:14px">
       <label>Anthropic API Key (optional — enables smarter AI extraction)</label>
       <input type="password" id="s-apikey" placeholder="sk-ant-..." />
@@ -269,7 +309,6 @@ function render(n) {
 function step1(c) {
   const resumeBanner = S._pendingSession ? `
     <div class="alert alert-info" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
-      <span>🔄</span>
       <div style="flex:1">
         <strong>Resume in-progress quote</strong>
         <div style="font-size:11px;margin-top:2px">${esc(S._pendingSession.extracted?.solicitation_number||'')} ${esc(S._pendingSession.extracted?.project_title||'')}</div>
@@ -283,49 +322,24 @@ function step1(c) {
   <div class="card">
     <div class="card-title"><span class="dot"></span>Select Solicitation Document</div>
     <div class="dropzone" id="dz" onclick="pickFile()" ondrop="onDrop(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)">
-      <div class="dz-icon">📄</div>
       <div class="dz-title">Drop your solicitation file here</div>
       <div class="dz-sub">or click to browse</div>
       <div class="dz-types"><span class="pill">PDF</span><span class="pill">DOCX</span><span class="pill">TXT</span></div>
     </div>
     <div id="file-info" class="hidden" style="margin-top:14px">
       <div class="alert alert-success">
-        <span>✅</span>
         <div><strong id="fname"></strong><div style="font-size:11px;margin-top:2px" id="fsize"></div></div>
         <button class="btn btn-ghost btn-sm ml-auto" onclick="clearFile()">✕</button>
       </div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>AI Enhancement (Optional)</div>
-    <div class="field">
-      <label>Anthropic API Key</label>
-      <input type="password" id="ak" placeholder="sk-ant-... (leave blank to use rule-based extraction)" value="${esc(S.apiKey)}" oninput="S.apiKey=this.value" />
-      <span class="text-muted" style="font-size:11px;margin-top:4px">Without a key, rule-based extraction handles most standard formats including sam.gov documents.</span>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Or Fetch Directly from SAM.gov</div>
-    <div class="grid">
-      <div class="field">
-        <label>Notice ID</label>
-        <input id="sam-noticeid" placeholder="e.g. W911S225U1431" value="${esc(S.samNoticeId||'')}" oninput="S.samNoticeId=this.value" />
-      </div>
-      <div class="field">
-        <label>SAM.gov API Key</label>
-        <input type="password" id="sam-key" placeholder="From sam.gov account → API keys" value="${esc(S.samKey||'')}" oninput="S.samKey=this.value" />
-      </div>
-    </div>
-    <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
-      <button class="btn btn-ghost" id="sam-btn" onclick="doSamLookup()">🔗 Fetch from SAM.gov</button>
-      <span style="font-size:11px;color:var(--muted)">Free API key from SAM.gov account settings · expires every 90 days</span>
-    </div>
-    <div id="sam-prog" class="hidden" style="margin-top:8px"><div class="alert alert-info"><div class="spin"></div><span style="margin-left:8px">Fetching from SAM.gov...</span></div></div>
-    <div id="sam-err" class="hidden"></div>
-    <div id="sam-ok" class="hidden"></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+    <button class="btn btn-ghost btn-sm" onclick="openAiModal()">AI Extraction${S.apiKey ? ' <span style="color:var(--green);font-size:10px">&#9679; active</span>' : ''}</button>
+    <button class="btn btn-ghost btn-sm" onclick="openSamModal()">SAM.gov Lookup</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadDemoData()">Load Demo Data</button>
   </div>
   <div class="btn-row">
-    <button class="btn btn-primary btn-lg" id="parse-btn" onclick="doParse()" disabled>🔍 Extract Solicitation Data</button>
+    <button class="btn btn-primary btn-lg" id="parse-btn" onclick="doParse()" disabled>Extract Solicitation Data</button>
   </div>
   <div id="parse-prog" class="hidden" style="margin-top:12px">
     <div class="alert alert-info"><div class="spin"></div><span id="parse-msg" style="margin-left:8px">Uploading...</span></div>
@@ -412,7 +426,7 @@ async function doParse() {
     setTimeout(() => goTo(2), 500)
   } catch(e) {
     err.classList.remove('hidden')
-    err.innerHTML = `<div class="alert alert-error">❌ ${esc(e.message)}</div>`
+    err.innerHTML = `<div class="alert alert-error">${esc(e.message)}</div>`
     btn.disabled = false; p(0,'')
   }
 }
@@ -421,9 +435,13 @@ async function doParse() {
 function step2(c) {
   const d = S.extracted
   const m = d._method||'rules'
-  const badge = m.includes('ai')
-    ? '<span class="mbadge ai">🤖 AI + Rule-Based Extraction</span>'
-    : '<span class="mbadge rules">📋 Rule-Based Extraction</span>'
+  const badge = m === 'demo'
+    ? '<span class="mbadge rules">Demo Data — edit any field below</span>'
+    : m.includes('ai')
+      ? '<span class="mbadge ai">AI + Rule-Based Extraction</span>'
+      : m === 'sam_gov'
+        ? '<span class="mbadge ai">SAM.gov Lookup</span>'
+        : '<span class="mbadge rules">Rule-Based Extraction</span>'
 
   const fields = [
     ['solicitation_number','Solicitation #',false],['project_title','Project Title',true],
@@ -499,7 +517,7 @@ function step3(c) {
           <button class="btn btn-danger btn-sm" onclick="removeLogo()">Remove</button>
         </div>
       </div>` : `
-      <button class="btn btn-ghost" onclick="pickLogo()">📷 Upload Logo (PNG / JPG)</button>
+      <button class="btn btn-ghost" onclick="pickLogo()">Upload Logo (PNG / JPG)</button>
       <div style="font-size:11px;color:var(--muted);margin-top:6px">Appears top-left of the quote document.</div>`}
   </div>
   <div class="card">
@@ -548,14 +566,14 @@ function step3(c) {
   </div>
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
-    <button class="btn btn-ghost" onclick="saveVendor()">💾 Save Info</button>
+    <button class="btn btn-ghost" onclick="saveVendor()">Save Info</button>
     <button class="btn btn-primary" onclick="next()">Build Quote Lines →</button>
   </div>`
 }
 
 function saveVendor() {
   try { localStorage.setItem('vendor', JSON.stringify(S.vendor)) } catch(e) {}
-  const b = event.target; b.textContent='✅ Saved!'; setTimeout(()=>b.textContent='💾 Save Info',1500)
+  const b = event.target; b.textContent='Saved'; setTimeout(()=>b.textContent='Save Info',1500)
 }
 
 // ── STEP 4: LINE ITEMS ───────────────────────────────────────────────────────
@@ -577,7 +595,7 @@ function step4(c) {
       <td><input type="number" value="${esc(String(it.unit_price||''))}" onchange="S.items[${i}].unit_price=this.value;updTotals()" min="0" step="0.01" /></td>
       <td style="text-align:right;color:var(--gold)" id="lt${i}">${lineTotal(it)}</td>
       <td><div class="row-actions">
-        <button class="btn btn-ghost btn-sm" onclick="dupRow(${i})">⎘</button>
+        <button class="btn btn-ghost btn-sm" onclick="dupRow(${i})">Dup</button>
         <button class="btn btn-danger btn-sm" onclick="delRow(${i})">✕</button>
       </div></td>
     </tr>`).join('')
@@ -610,7 +628,7 @@ function step4(c) {
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" onclick="addRow()">+ Add Row</button>
       <button class="btn btn-ghost btn-sm" onclick="addRows()">+ Add Multiple</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearRows()" style="color:var(--red)">🗑 Clear All</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearRows()" style="color:var(--red)">Clear All</button>
       <span class="ml-auto text-muted" style="align-self:center">${S.items.length} item${S.items.length!==1?'s':''}</span>
     </div>
   </div>
@@ -654,8 +672,8 @@ function step5(c) {
   if(items.some(i=>!i.unit_price)) warns.push('Some items are missing unit prices')
 
   const warnHtml = warns.length
-    ? `<div class="alert alert-warn">⚠️ <div><strong>Review before generating:</strong>${warns.map(w=>`<div>• ${w}</div>`).join('')}</div></div>`
-    : `<div class="alert alert-success">✅ Quote is ready to generate.</div>`
+    ? `<div class="alert alert-warn"><div><strong>Review before generating:</strong>${warns.map(w=>`<div>• ${w}</div>`).join('')}</div></div>`
+    : `<div class="alert alert-success">Quote is ready to generate.</div>`
 
   c.innerHTML = `
   ${warnHtml}
@@ -675,7 +693,7 @@ function step5(c) {
   </div>
   <div class="card">
     <div class="card-title"><span class="dot"></span>Export</div>
-    <button class="btn btn-primary btn-lg" onclick="doGenerate()" id="gen-btn">📄 Generate Quote (.docx)</button>
+    <button class="btn btn-primary btn-lg" onclick="doGenerate()" id="gen-btn">Generate Quote (.docx)</button>
     <div style="font-size:12px;color:var(--muted);margin-top:10px">A Save dialog will open. The document opens automatically after saving.</div>
   </div>
   <div id="gen-prog" class="hidden" style="margin-top:12px">
@@ -683,11 +701,11 @@ function step5(c) {
   </div>
   <div id="gen-err" class="hidden"></div>
   <div id="gen-ok" class="hidden">
-    <div class="alert alert-success">✅ <strong>Quote saved and opened successfully!</strong></div>
+    <div class="alert alert-success"><strong>Quote saved and opened successfully.</strong></div>
   </div>
   <div class="btn-row" style="margin-top:8px">
     <button class="btn btn-ghost" onclick="goTo(4)">← Back</button>
-    <button class="btn btn-ghost" onclick="startOver()">🔄 New Quote</button>
+    <button class="btn btn-ghost" onclick="startOver()">New Quote</button>
   </div>`
 }
 
@@ -726,7 +744,7 @@ async function doGenerate() {
     btn.disabled=false
   } catch(e) {
     prog.classList.add('hidden'); err.classList.remove('hidden')
-    err.innerHTML=`<div class="alert alert-error">❌ ${esc(e.message)}</div>`
+    err.innerHTML=`<div class="alert alert-error">${esc(e.message)}</div>`
     btn.disabled=false
   }
 }
@@ -778,16 +796,72 @@ function bumpQuoteSeq() {
   try { localStorage.setItem('quoteSeq', String(parseInt(localStorage.getItem('quoteSeq')||'0')+1)) } catch(e) {}
 }
 
+// ── AI MODAL ─────────────────────────────────────────────────────────────────
+function openAiModal() {
+  document.getElementById('m-apikey').value = S.apiKey
+  document.getElementById('ai-modal-overlay').classList.remove('hidden')
+}
+function closeAiModal() { document.getElementById('ai-modal-overlay').classList.add('hidden') }
+function saveAiKey() {
+  S.apiKey = document.getElementById('m-apikey').value.trim()
+  try { localStorage.setItem('apiKey', S.apiKey) } catch(e) {}
+  closeAiModal()
+  if (S.step === 1) render(1)
+}
+
+// ── SAM MODAL ─────────────────────────────────────────────────────────────────
+function openSamModal() {
+  document.getElementById('sam-noticeid').value = S.samNoticeId || ''
+  document.getElementById('sam-key').value = S.samKey || ''
+  document.getElementById('sam-prog').classList.add('hidden')
+  document.getElementById('sam-err').classList.add('hidden')
+  document.getElementById('sam-ok').classList.add('hidden')
+  document.getElementById('sam-btn').disabled = false
+  document.getElementById('sam-modal-overlay').classList.remove('hidden')
+}
+function closeSamModal() { document.getElementById('sam-modal-overlay').classList.add('hidden') }
+
 // ── F2: LOGO ─────────────────────────────────────────────────────────────────
 async function pickLogo() {
   if (!window.api?.pickLogo) return
   const r = await window.api.pickLogo()
-  if (r.canceled) return
+  if (r.canceled) { if (r.error) alert(r.error); return }
   S.vendor.logo_b64 = r.b64; S.vendor.logo_ext = r.ext; S.vendor.logo_name = r.name
   render(3)
 }
 function removeLogo() {
   S.vendor.logo_b64=''; S.vendor.logo_ext=''; S.vendor.logo_name=''; render(3)
+}
+
+// ── DEMO DATA ────────────────────────────────────────────────────────────────
+function loadDemoData() {
+  if (S.extracted?.solicitation_number && !confirm('Load demo data? This will replace current extracted data.')) return
+  S.extracted = {
+    _method: 'demo',
+    solicitation_number: 'W911S225U1431',
+    project_title: 'Law Enforcement Ballistic Vests',
+    solicitation_type: 'RFQ',
+    issuing_agency: 'W6QM MICC-FT DRUM / JBLM',
+    due_date: '2025/08/13 08:00 Pacific Time',
+    posting_date: '2025/08/06',
+    naics_code: '339113: Surgical Appliance and Supplies Manufacturing',
+    psc_code: '8470: ARMOR, PERSONAL',
+    set_aside: 'Total Small Business Set-Aside',
+    contact_name: 'Cory Ponder',
+    contact_email: 'cory.a.ponder.civ@army.mil',
+    contact_phone: '(253) 477-6356',
+    place_of_performance: 'Joint Base Lewis-McChord, WA 98433',
+    scope_of_work: 'FY25 NWJRCF Law Enforcement Ballistic Vests. Sizes: SM×10, M×10, L×20, XL×10 (50 total). NIJ Standard 0101.06 Certified Threat Level IIIA ballistic insert set (front and rear) per vest. NIJ Certified Spike III stab plate per vest. Velcro for nametape, badge, and MILITARY POLICE markings. Pocket with clip closure (radio). No zippered front. Hook and loop side closure. Vendor must include spec sheet for vest, ballistic inserts, and stab plates.',
+    quantities: [{size:'SM',qty:'10'},{size:'M',qty:'10'},{size:'L',qty:'20'},{size:'XL',qty:'10'}]
+  }
+  S.items = [
+    {id:1, description:'LE Ballistic Vest, NIJ IIIA w/ Front & Rear Insert + Stab Plate', size:'SM', unit:'EA', qty:10, unit_price:''},
+    {id:2, description:'LE Ballistic Vest, NIJ IIIA w/ Front & Rear Insert + Stab Plate', size:'M',  unit:'EA', qty:10, unit_price:''},
+    {id:3, description:'LE Ballistic Vest, NIJ IIIA w/ Front & Rear Insert + Stab Plate', size:'L',  unit:'EA', qty:20, unit_price:''},
+    {id:4, description:'LE Ballistic Vest, NIJ IIIA w/ Front & Rear Insert + Stab Plate', size:'XL', unit:'EA', qty:10, unit_price:''},
+  ]
+  S.done.add(1)
+  goTo(2)
 }
 
 // ── F7: OPTION YEARS ─────────────────────────────────────────────────────────
@@ -822,12 +896,12 @@ async function doSamLookup() {
     prog.classList.add('hidden')
     const ok = document.getElementById('sam-ok')
     ok.classList.remove('hidden')
-    ok.innerHTML = `<div class="alert alert-success">✅ Found: <strong>${esc(data.data.project_title||noticeId)}</strong></div>`
-    setTimeout(()=>next(), 1200)
+    ok.innerHTML = `<div class="alert alert-success">Found: <strong>${esc(data.data.project_title||noticeId)}</strong></div>`
+    setTimeout(()=>{ closeSamModal(); next() }, 1200)
   } catch(e) {
     prog.classList.add('hidden')
     err.classList.remove('hidden')
-    err.innerHTML=`<div class="alert alert-error">❌ ${esc(e.message)}</div>`
+    err.innerHTML=`<div class="alert alert-error">${esc(e.message)}</div>`
     btn.disabled=false
   }
 }

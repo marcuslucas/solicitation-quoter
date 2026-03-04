@@ -6,7 +6,21 @@ build/
 __pycache__/
 *.pyc
 *.pyo
+
+# Test data — real solicitation files and generated output
 testdata/output/
 testdata/*.pdf
 testdata/*.txt
 testdata/*.docx
+
+# Claude Code project memory (local AI session data)
+.claude/
+
+# Environment / secrets
+.env
+.env.*
+
+# OS clutter
+.DS_Store
+Thumbs.db
+nul

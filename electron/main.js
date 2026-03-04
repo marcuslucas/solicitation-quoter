@@ -81,8 +81,10 @@ ipcMain.handle('open-file', () => dialog.showOpenDialog(win, {
   filters: [{ name: 'Documents', extensions: ['pdf','docx','doc','txt'] }]
 }))
 ipcMain.handle('save-quote', async (_, { bytes, name }) => {
+  const outputDir = path.join(app.getPath('documents'), 'SolQuoter Quotes')
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true })
   const r = await dialog.showSaveDialog(win, {
-    defaultPath: name || 'Quote.docx',
+    defaultPath: path.join(outputDir, name || 'Quote.docx'),
     filters: [{ name: 'Word Document', extensions: ['docx'] }]
   })
   if (!r.canceled && r.filePath) {
@@ -100,6 +102,10 @@ ipcMain.handle('pick-logo', async () => {
   })
   if (r.canceled || !r.filePaths[0]) return { canceled: true }
   const buf = fs.readFileSync(r.filePaths[0])
+  const MAX_LOGO = 2 * 1024 * 1024
+  if (buf.length > MAX_LOGO) {
+    return { canceled: true, error: `Logo is too large (${(buf.length/1048576).toFixed(1)} MB). Maximum size is 2 MB.` }
+  }
   return {
     canceled: false,
     b64: buf.toString('base64'),
