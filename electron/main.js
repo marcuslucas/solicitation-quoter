@@ -95,6 +95,30 @@ ipcMain.handle('save-quote', async (_, { bytes, name }) => {
   return { success: false }
 })
 ipcMain.handle('open-url', (_, url) => shell.openExternal(url))
+ipcMain.handle('generate-pdf', async (_, { html }) => {
+  const pdfWin = new BrowserWindow({ show: false, webPreferences: { offscreen: false, contextIsolation: true } })
+  try {
+    await pdfWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+    const data = await pdfWin.webContents.printToPDF({ printBackground: true, pageSize: 'Letter', marginsType: 1 })
+    return Array.from(data)
+  } finally {
+    pdfWin.destroy()
+  }
+})
+ipcMain.handle('save-pdf', async (_, { bytes, name }) => {
+  const outputDir = path.join(app.getPath('documents'), 'SolQuoter Quotes')
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true })
+  const r = await dialog.showSaveDialog(win, {
+    defaultPath: path.join(outputDir, name || 'Quote.pdf'),
+    filters: [{ name: 'PDF Document', extensions: ['pdf'] }]
+  })
+  if (!r.canceled && r.filePath) {
+    fs.writeFileSync(r.filePath, Buffer.from(bytes))
+    shell.openPath(r.filePath)
+    return { success: true }
+  }
+  return { success: false }
+})
 ipcMain.handle('pick-logo', async () => {
   const r = await dialog.showOpenDialog(win, {
     properties: ['openFile'],

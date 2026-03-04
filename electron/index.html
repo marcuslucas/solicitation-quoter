@@ -120,6 +120,12 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
 .ml-auto{margin-left:auto}
 .text-muted{color:var(--muted)}
 .text-gold{color:var(--gold)}
+
+/* Combined step two-column layout */
+.step-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.step-full{grid-column:1/-1}
+.char-count{font-size:11px;color:var(--muted);text-align:right;margin-top:3px}
+.quote-preview-wrap{background:#fff;border-radius:8px;overflow:auto;max-height:520px}
 </style>
 </head>
 <body>
@@ -139,13 +145,10 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
         <span class="step-num" id="sn2">2</span><span>Review Extracted Data</span>
       </div>
       <div class="nav-item" data-step="3" onclick="goTo(3)">
-        <span class="step-num" id="sn3">3</span><span>Your Company Info</span>
+        <span class="step-num" id="sn3">3</span><span>Company Info &amp; Lines</span>
       </div>
       <div class="nav-item" data-step="4" onclick="goTo(4)">
-        <span class="step-num" id="sn4">4</span><span>Build Quote Lines</span>
-      </div>
-      <div class="nav-item" data-step="5" onclick="goTo(5)">
-        <span class="step-num" id="sn5">5</span><span>Generate &amp; Export</span>
+        <span class="step-num" id="sn4">4</span><span>Generate &amp; Export</span>
       </div>
     </nav>
     <div class="sidebar-footer">
@@ -160,6 +163,27 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
       <div class="topbar-file" id="tf"></div>
     </div>
     <div class="content" id="content"></div>
+  </div>
+</div>
+
+<!-- CSV IMPORT MODAL -->
+<div class="overlay hidden" id="csv-modal-overlay" onclick="if(event.target===this)closeCsvModal()">
+  <div class="modal" style="width:520px">
+    <h2>Import Line Items from CSV</h2>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Expected columns: <strong>Description, Size/Type, UOM, Qty, Unit Price</strong><br>Header row is detected and skipped automatically. Save Excel files as CSV first.</p>
+    <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+      <button class="btn btn-ghost btn-sm" onclick="csvPickFile()">Browse CSV file…</button>
+      <span id="csv-file-name" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <div class="field">
+      <label>Or paste CSV text</label>
+      <textarea id="csv-paste" rows="8" style="font-family:monospace;font-size:12px" placeholder="Description,Size,UOM,Qty,Unit Price&#10;Widget A,SM,EA,10,25.00"></textarea>
+    </div>
+    <div id="csv-err" class="hidden" style="margin-top:8px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCsvModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="doImportCsv()">Import</button>
+    </div>
   </div>
 </div>
 
@@ -258,7 +282,7 @@ const S = {
   items: []
 }
 
-const TITLES = {1:'Upload Solicitation',2:'Review Extracted Data',3:'Your Company Info',4:'Build Quote Lines',5:'Generate & Export'}
+const TITLES = {1:'Upload Solicitation',2:'Review Extracted Data',3:'Company Info & Quote Lines',4:'Generate & Export'}
 
 async function init() {
   if (window.api) S.port = await window.api.getPort()
@@ -302,7 +326,7 @@ function next() { S.done.add(S.step); goTo(S.step + 1) }
 function render(n) {
   const c = document.getElementById('content')
   c.innerHTML = ''
-  ;[,step1,step2,step3,step4,step5][n](c)
+  ;[,step1,step2,step3,step4][n](c)
 }
 
 // ── STEP 1: UPLOAD ───────────────────────────────────────────────────────────
@@ -422,6 +446,14 @@ async function doParse() {
     if (!data.success) throw new Error(data.error || 'Extraction failed')
     p(100, 'Done!')
     S.extracted = data.data
+    // Populate line items immediately from parse result
+    if (data.data.ai_line_items?.length) {
+      S.items = data.data.ai_line_items
+    } else if (data.data.quantities?.length) {
+      S.items = data.data.quantities.map((q,idx) => ({
+        id:idx+1, description: data.data.project_title||'', size:q.size||'', unit:'EA', qty:q.qty, unit_price:''
+      }))
+    }
     S.done.add(1)
     setTimeout(() => goTo(2), 500)
   } catch(e) {
@@ -480,104 +512,20 @@ function step2(c) {
   </div>
   <div class="card">
     <div class="card-title"><span class="dot"></span>Scope of Work / Description</div>
-    <textarea rows="6" onchange="S.extracted.scope_of_work=this.value">${esc(d.scope_of_work||'')}</textarea>
+    <textarea id="scope-ta" rows="6" maxlength="2000" oninput="S.extracted.scope_of_work=this.value;document.getElementById('scope-count').textContent=this.value.length+' / 2,000'">${esc(d.scope_of_work||'')}</textarea>
+    <div class="char-count" id="scope-count">${(d.scope_of_work||'').length} / 2,000</div>
   </div>
   ${qhtml}
   <div class="btn-row">
     <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
-    <button class="btn btn-primary" onclick="next()">Company Info →</button>
+    <button class="btn btn-primary" onclick="next()">Company Info &amp; Lines →</button>
   </div>`
 }
 
-// ── STEP 3: VENDOR ───────────────────────────────────────────────────────────
+// ── STEP 3: COMPANY INFO + LINE ITEMS ────────────────────────────────────────
 function step3(c) {
   const v = S.vendor
   if (!v.quote_number) v.quote_number = nextQuoteNum()
-  c.innerHTML = `
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Company Information</div>
-    <div class="grid">
-      <div class="field s2"><label>Company / Business Name *</label><input value="${esc(v.company_name)}" oninput="S.vendor.company_name=this.value" placeholder="Acme Defense Solutions LLC" /></div>
-      <div class="field"><label>Street Address</label><input value="${esc(v.address)}" oninput="S.vendor.address=this.value" placeholder="123 Main Street" /></div>
-      <div class="field"><label>City, State ZIP</label><input value="${esc(v.city_state_zip)}" oninput="S.vendor.city_state_zip=this.value" placeholder="Springfield, VA 22150" /></div>
-      <div class="field"><label>Phone</label><input value="${esc(v.phone)}" oninput="S.vendor.phone=this.value" placeholder="(555) 555-0100" /></div>
-      <div class="field"><label>Email</label><input value="${esc(v.email)}" oninput="S.vendor.email=this.value" placeholder="quotes@yourcompany.com" /></div>
-      <div class="field"><label>Website</label><input value="${esc(v.website)}" oninput="S.vendor.website=this.value" placeholder="www.yourcompany.com" /></div>
-      <div class="field"><label>SAM.gov UEI</label><input value="${esc(v.sam_uei)}" oninput="S.vendor.sam_uei=this.value" placeholder="ABCDEF123456" /></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Company Logo (Optional)</div>
-    ${v.logo_b64 ? `
-      <div style="display:flex;align-items:center;gap:12px">
-        <img src="data:image/${esc(v.logo_ext||'png')};base64,${v.logo_b64}"
-             style="max-height:60px;max-width:160px;object-fit:contain;border-radius:4px;background:#fff;padding:4px" />
-        <div>
-          <div style="font-size:12px;color:var(--text);margin-bottom:6px">${esc(v.logo_name||'Logo')}</div>
-          <button class="btn btn-danger btn-sm" onclick="removeLogo()">Remove</button>
-        </div>
-      </div>` : `
-      <button class="btn btn-ghost" onclick="pickLogo()">Upload Logo (PNG / JPG)</button>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Appears top-left of the quote document.</div>`}
-  </div>
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Quote Details</div>
-    <div class="grid">
-      <div class="field"><label>Prepared By</label><input value="${esc(v.prepared_by)}" oninput="S.vendor.prepared_by=this.value" placeholder="John Smith" /></div>
-      <div class="field"><label>Title</label><input value="${esc(v.title)}" oninput="S.vendor.title=this.value" placeholder="Contracts Manager" /></div>
-      <div class="field"><label>Quote Number</label><input value="${esc(v.quote_number)}" oninput="S.vendor.quote_number=this.value" placeholder="Q-2026-0001" /></div>
-      <div class="field"><label>Quote Valid For</label><input value="${esc(v.validity_period)}" oninput="S.vendor.validity_period=this.value" placeholder="30 days" /></div>
-      <div class="field"><label>Delivery (days ARO)</label><input type="number" value="${esc(String(v.delivery_days||''))}" oninput="S.vendor.delivery_days=this.value" placeholder="30" min="0" /></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Pricing Extras</div>
-    <div class="grid c3">
-      <div class="field"><label>Freight / Shipping ($)</label><input type="number" value="${esc(String(v.freight||''))}" oninput="S.vendor.freight=this.value" placeholder="0.00" min="0" /></div>
-      <div class="field"><label>Tax Rate (%)</label><input type="number" value="${esc(String(v.tax_rate||''))}" oninput="S.vendor.tax_rate=this.value" placeholder="0" min="0" max="100" /></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Notes &amp; Terms</div>
-    <div class="grid c1">
-      <div class="field"><label>Notes</label><textarea oninput="S.vendor.notes=this.value" placeholder="Optional notes...">${esc(v.notes)}</textarea></div>
-      <div class="field"><label>Terms &amp; Conditions</label><textarea oninput="S.vendor.terms=this.value">${esc(v.terms)}</textarea></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Option Years</div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <input type="checkbox" id="oy-on" ${v.option_years_enabled?'checked':''}
-             onchange="S.vendor.option_years_enabled=this.checked;render(3)" style="width:auto;margin:0" />
-      <label for="oy-on" style="text-transform:none;font-size:13px;color:var(--text);font-weight:400">Include option year pricing summary in quote</label>
-    </div>
-    ${v.option_years_enabled ? `
-    ${(v.option_years||[]).map((oy,i)=>`
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <input value="${esc(oy.label)}" oninput="S.vendor.option_years[${i}].label=this.value"
-               placeholder="Option Year ${i+1}" style="flex:1" />
-        <input type="number" value="${esc(String(oy.pct||0))}" oninput="S.vendor.option_years[${i}].pct=parseFloat(this.value)||0"
-               style="width:80px" min="-100" max="100" />
-        <span style="color:var(--muted);font-size:12px;white-space:nowrap">% adj.</span>
-        <button class="btn btn-danger btn-sm" onclick="removeOptionYear(${i})">✕</button>
-      </div>`).join('')}
-    ${(v.option_years||[]).length<5?`<button class="btn btn-ghost btn-sm" onclick="addOptionYear()">+ Add Option Year</button>`:''}
-    ` : ''}
-  </div>
-  <div class="btn-row">
-    <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
-    <button class="btn btn-ghost" onclick="saveVendor()">Save Info</button>
-    <button class="btn btn-primary" onclick="next()">Build Quote Lines →</button>
-  </div>`
-}
-
-function saveVendor() {
-  try { localStorage.setItem('vendor', JSON.stringify(S.vendor)) } catch(e) {}
-  const b = event.target; b.textContent='Saved'; setTimeout(()=>b.textContent='Save Info',1500)
-}
-
-// ── STEP 4: LINE ITEMS ───────────────────────────────────────────────────────
-function step4(c) {
   if (S.items.length === 0 && S.extracted.quantities) {
     S.items = S.extracted.quantities.map((q,i) => ({
       id:i+1, description: S.extracted.project_title||'', size:q.size, unit:'EA', qty:q.qty, unit_price:''
@@ -591,8 +539,8 @@ function step4(c) {
       <td><input value="${esc(it.description||'')}" onchange="S.items[${i}].description=this.value" placeholder="Item description" /></td>
       <td><input value="${esc(String(it.size||''))}" onchange="S.items[${i}].size=this.value" style="max-width:80px" /></td>
       <td><input value="${esc(String(it.unit||'EA'))}" onchange="S.items[${i}].unit=this.value" style="max-width:55px" placeholder="EA" /></td>
-      <td><input type="number" value="${esc(String(it.qty||''))}" onchange="S.items[${i}].qty=this.value;updTotals()" min="0" style="max-width:80px" /></td>
-      <td><input type="number" value="${esc(String(it.unit_price||''))}" onchange="S.items[${i}].unit_price=this.value;updTotals()" min="0" step="0.01" /></td>
+      <td><input type="number" value="${esc(String(it.qty||''))}" onchange="S.items[${i}].qty=this.value;updTotals()" min="0" style="max-width:80px;background:var(--bg3);border:1px solid var(--border)" /></td>
+      <td><input type="number" value="${esc(String(it.unit_price||''))}" onchange="S.items[${i}].unit_price=this.value;updTotals()" min="0" step="0.01" style="background:var(--bg3);border:1px solid var(--border)" /></td>
       <td style="text-align:right;color:var(--gold)" id="lt${i}">${lineTotal(it)}</td>
       <td><div class="row-actions">
         <button class="btn btn-ghost btn-sm" onclick="dupRow(${i})">Dup</button>
@@ -601,41 +549,126 @@ function step4(c) {
     </tr>`).join('')
 
   const grand = grandTotal()
-  const fr = parseFloat(S.vendor.freight||0)
-  const tx = parseFloat(S.vendor.tax_rate||0)
-  const tax = grand*(tx/100); const final = grand+fr+tax
+  const fr = parseFloat(v.freight||0), tx = parseFloat(v.tax_rate||0)
+  const tax = grand*(tx/100), final = grand+fr+tax
 
   c.innerHTML = `
-  <div class="card">
-    <div class="card-title"><span class="dot"></span>Line Items</div>
-    <div style="overflow-x:auto">
-      <table class="tbl">
-        <thead><tr>
-          <th style="width:36px">#</th><th>Description</th><th style="width:85px">Size/Type</th>
-          <th style="width:60px">UOM</th><th style="width:75px">Qty</th>
-          <th style="width:110px">Unit Price</th>
-          <th style="width:110px;text-align:right">Total</th><th style="width:72px"></th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot>
-          <tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Subtotal</td><td style="text-align:right" id="gt">$${grand.toFixed(2)}</td><td></td></tr>
-          ${fr?`<tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Freight</td><td style="text-align:right">$${fr.toFixed(2)}</td><td></td></tr>`:''}
-          ${tx?`<tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Tax (${tx}%)</td><td style="text-align:right">$${tax.toFixed(2)}</td><td></td></tr>`:''}
-          <tr class="tfoot" style="font-size:14px"><td colspan="6" style="text-align:right;padding-right:16px">GRAND TOTAL</td><td style="text-align:right;font-size:15px" id="ft">$${final.toFixed(2)}</td><td></td></tr>
-        </tfoot>
-      </table>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-      <button class="btn btn-ghost btn-sm" onclick="addRow()">+ Add Row</button>
-      <button class="btn btn-ghost btn-sm" onclick="addRows()">+ Add Multiple</button>
-      <button class="btn btn-ghost btn-sm" onclick="clearRows()" style="color:var(--red)">Clear All</button>
-      <span class="ml-auto text-muted" style="align-self:center">${S.items.length} item${S.items.length!==1?'s':''}</span>
-    </div>
+  <div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Company Information</div>
+        <div class="grid">
+          <div class="field s2"><label>Company / Business Name *</label><input value="${esc(v.company_name)}" oninput="S.vendor.company_name=this.value" placeholder="Acme Defense Solutions LLC" /></div>
+          <div class="field"><label>Street Address</label><input value="${esc(v.address)}" oninput="S.vendor.address=this.value" placeholder="123 Main Street" /></div>
+          <div class="field"><label>City, State ZIP</label><input value="${esc(v.city_state_zip)}" oninput="S.vendor.city_state_zip=this.value" placeholder="Springfield, VA 22150" /></div>
+          <div class="field"><label>Phone</label><input value="${esc(v.phone)}" oninput="S.vendor.phone=this.value" placeholder="(555) 555-0100" /></div>
+          <div class="field"><label>Email</label><input value="${esc(v.email)}" oninput="S.vendor.email=this.value" placeholder="quotes@yourcompany.com" /></div>
+          <div class="field"><label>Website</label><input value="${esc(v.website)}" oninput="S.vendor.website=this.value" placeholder="www.yourcompany.com" /></div>
+          <div class="field"><label>SAM.gov UEI</label><input value="${esc(v.sam_uei)}" oninput="S.vendor.sam_uei=this.value" placeholder="ABCDEF123456" /></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Quote Details</div>
+        <div class="grid">
+          <div class="field"><label>Prepared By</label><input value="${esc(v.prepared_by)}" oninput="S.vendor.prepared_by=this.value" placeholder="John Smith" /></div>
+          <div class="field"><label>Title</label><input value="${esc(v.title)}" oninput="S.vendor.title=this.value" placeholder="Contracts Manager" /></div>
+          <div class="field"><label>Quote Number</label><input value="${esc(v.quote_number)}" oninput="S.vendor.quote_number=this.value" placeholder="Q-2026-0001" /></div>
+          <div class="field"><label>Quote Valid For</label><input value="${esc(v.validity_period)}" oninput="S.vendor.validity_period=this.value" placeholder="30 days" /></div>
+          <div class="field"><label>Delivery (days ARO)</label><input type="number" value="${esc(String(v.delivery_days||''))}" oninput="S.vendor.delivery_days=this.value" placeholder="30" min="0" /></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Company Logo (Optional)</div>
+        ${v.logo_b64 ? `
+          <div style="display:flex;align-items:center;gap:12px">
+            <img src="data:image/${esc(v.logo_ext||'png')};base64,${v.logo_b64}"
+                 style="max-height:60px;max-width:160px;object-fit:contain;border-radius:4px;background:#fff;padding:4px" />
+            <div>
+              <div style="font-size:12px;color:var(--text);margin-bottom:6px">${esc(v.logo_name||'Logo')}</div>
+              <button class="btn btn-danger btn-sm" onclick="removeLogo()">Remove</button>
+            </div>
+          </div>` : `
+          <button class="btn btn-ghost" onclick="pickLogo()">Upload Logo (PNG / JPG)</button>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">Appears top-left of the quote document.</div>`}
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Line Items</div>
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th style="width:36px">#</th><th>Description</th><th style="width:85px">Size/Type</th>
+              <th style="width:60px">UOM</th><th style="width:75px">Qty</th>
+              <th style="width:110px">Unit Price</th>
+              <th style="width:110px;text-align:right">Total</th><th style="width:72px"></th>
+            </tr></thead>
+            <tbody id="li-tbody">${rows}</tbody>
+            <tfoot>
+              <tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Subtotal</td><td style="text-align:right" id="gt">$${grand.toFixed(2)}</td><td></td></tr>
+              ${fr?`<tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Freight</td><td style="text-align:right">$${fr.toFixed(2)}</td><td></td></tr>`:''}
+              ${tx?`<tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Tax (${tx}%)</td><td style="text-align:right">$${tax.toFixed(2)}</td><td></td></tr>`:''}
+              <tr class="tfoot" style="font-size:14px"><td colspan="6" style="text-align:right;padding-right:16px">GRAND TOTAL</td><td style="text-align:right;font-size:15px" id="ft">$${final.toFixed(2)}</td><td></td></tr>
+            </tfoot>
+          </table>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="addRow()">+ Add Row</button>
+          <button class="btn btn-ghost btn-sm" onclick="addRows()">+ Add Multiple</button>
+          <button class="btn btn-ghost btn-sm" onclick="openCsvModal()">Import CSV</button>
+          <button class="btn btn-ghost btn-sm" onclick="clearRows()" style="color:var(--red)">Clear All</button>
+          <span class="ml-auto text-muted" style="align-self:center">${S.items.length} item${S.items.length!==1?'s':''}</span>
+        </div>
+      </div>
+
+
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Pricing Extras</div>
+        <div class="grid c3">
+          <div class="field"><label>Freight / Shipping ($)</label><input type="number" value="${esc(String(v.freight||''))}" oninput="S.vendor.freight=this.value" placeholder="0.00" min="0" /></div>
+          <div class="field"><label>Tax Rate (%)</label><input type="number" value="${esc(String(v.tax_rate||''))}" oninput="S.vendor.tax_rate=this.value" placeholder="0" min="0" max="100" /></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Notes &amp; Terms</div>
+        <div class="grid c1">
+          <div class="field"><label>Notes</label><textarea oninput="S.vendor.notes=this.value" placeholder="Optional notes...">${esc(v.notes)}</textarea></div>
+          <div class="field"><label>Terms &amp; Conditions</label><textarea oninput="S.vendor.terms=this.value">${esc(v.terms)}</textarea></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="dot"></span>Option Years</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <input type="checkbox" id="oy-on" ${v.option_years_enabled?'checked':''}
+                 onchange="S.vendor.option_years_enabled=this.checked;render(3)" style="width:auto;margin:0" />
+          <label for="oy-on" style="text-transform:none;font-size:13px;color:var(--text);font-weight:400">Include option year pricing summary in quote</label>
+        </div>
+        ${v.option_years_enabled ? `
+        ${(v.option_years||[]).map((oy,i)=>`
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <input value="${esc(oy.label)}" oninput="S.vendor.option_years[${i}].label=this.value"
+                   placeholder="Option Year ${i+1}" style="flex:1" />
+            <input type="number" value="${esc(String(oy.pct||0))}" oninput="S.vendor.option_years[${i}].pct=parseFloat(this.value)||0"
+                   style="width:80px" min="-100" max="100" />
+            <span style="color:var(--muted);font-size:12px;white-space:nowrap">% adj.</span>
+            <button class="btn btn-danger btn-sm" onclick="removeOptionYear(${i})">✕</button>
+          </div>`).join('')}
+        ${(v.option_years||[]).length<5?`<button class="btn btn-ghost btn-sm" onclick="addOptionYear()">+ Add Option Year</button>`:''}
+        ` : ''}
+      </div>
+
   </div>
   <div class="btn-row">
-    <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
+    <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
+    <button class="btn btn-ghost" onclick="saveVendor()">Save Info</button>
     <button class="btn btn-primary" onclick="next()">Preview &amp; Generate →</button>
   </div>`
+
+  setupLineItemTabNav()
+}
+
+function saveVendor() {
+  try { localStorage.setItem('vendor', JSON.stringify(S.vendor)) } catch(e) {}
+  const b = event.target; b.textContent='Saved'; setTimeout(()=>b.textContent='Save Info',1500)
 }
 
 function lineTotal(it) {
@@ -652,14 +685,14 @@ function updTotals() {
   const ge=document.getElementById('gt'),fe=document.getElementById('ft')
   if(ge)ge.textContent='$'+g.toFixed(2); if(fe)fe.textContent='$'+fin.toFixed(2)
 }
-function addRow() { S.items.push({id:S.items.length+1,description:'',size:'',unit:'EA',qty:'',unit_price:''}); render(4) }
-function addRows() { const n=parseInt(prompt('How many rows?','5')); if(n>0){for(let i=0;i<n;i++)S.items.push({id:S.items.length+1,description:'',size:'',unit:'EA',qty:'',unit_price:''}); render(4)} }
-function dupRow(i) { S.items.splice(i+1,0,{...S.items[i]}); render(4) }
-function delRow(i) { if(S.items.length>1){S.items.splice(i,1); render(4)} }
-function clearRows() { if(confirm('Clear all line items?')){S.items=[{id:1,description:'',size:'',unit:'EA',qty:'',unit_price:''}];render(4)} }
+function addRow() { S.items.push({id:S.items.length+1,description:'',size:'',unit:'EA',qty:'',unit_price:''}); render(3) }
+function addRows() { const n=parseInt(prompt('How many rows?','5')); if(n>0){for(let i=0;i<n;i++)S.items.push({id:S.items.length+1,description:'',size:'',unit:'EA',qty:'',unit_price:''}); render(3)} }
+function dupRow(i) { S.items.splice(i+1,0,{...S.items[i]}); render(3) }
+function delRow(i) { if(S.items.length>1){S.items.splice(i,1); render(3)} }
+function clearRows() { if(confirm('Clear all line items?')){S.items=[{id:1,description:'',size:'',unit:'EA',qty:'',unit_price:''}];render(3)} }
 
-// ── STEP 5: GENERATE ─────────────────────────────────────────────────────────
-function step5(c) {
+// ── STEP 4: GENERATE & EXPORT ────────────────────────────────────────────────
+function step4(c) {
   const d=S.extracted,v=S.vendor
   const items=S.items.filter(i=>i.description||i.qty)
   const grand=grandTotal(),fr=parseFloat(v.freight||0),tx=parseFloat(v.tax_rate||0)
@@ -678,6 +711,10 @@ function step5(c) {
   c.innerHTML = `
   ${warnHtml}
   <div class="card">
+    <div class="card-title"><span class="dot"></span>Quote Preview</div>
+    <div class="quote-preview-wrap">${buildQuoteHTML(false)}</div>
+  </div>
+  <div class="card">
     <div class="card-title"><span class="dot"></span>Summary</div>
     <div class="data-grid">
       <div class="data-item"><div class="data-label">Solicitation #</div><div>${esc(d.solicitation_number||'—')}</div></div>
@@ -693,7 +730,10 @@ function step5(c) {
   </div>
   <div class="card">
     <div class="card-title"><span class="dot"></span>Export</div>
-    <button class="btn btn-primary btn-lg" onclick="doGenerate()" id="gen-btn">Generate Quote (.docx)</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-lg" onclick="doGenerate()" id="gen-btn">Generate Quote (.docx)</button>
+      <button class="btn btn-ghost btn-lg" onclick="doGeneratePdf()" id="pdf-btn">Save as PDF</button>
+    </div>
     <div style="font-size:12px;color:var(--muted);margin-top:10px">A Save dialog will open. The document opens automatically after saving.</div>
   </div>
   <div id="gen-prog" class="hidden" style="margin-top:12px">
@@ -704,7 +744,7 @@ function step5(c) {
     <div class="alert alert-success"><strong>Quote saved and opened successfully.</strong></div>
   </div>
   <div class="btn-row" style="margin-top:8px">
-    <button class="btn btn-ghost" onclick="goTo(4)">← Back</button>
+    <button class="btn btn-ghost" onclick="goTo(3)">← Back</button>
     <button class="btn btn-ghost" onclick="startOver()">New Quote</button>
   </div>`
 }
@@ -729,7 +769,7 @@ async function doGenerate() {
     prog.classList.add('hidden')
     if(window.api){
       const res=await window.api.saveQuote({bytes,name})
-      if(res.success){ ok.classList.remove('hidden'); S.done.add(5) }
+      if(res.success){ ok.classList.remove('hidden'); S.done.add(4) }
     } else {
       const url=URL.createObjectURL(blob); const a=document.createElement('a')
       a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url)
@@ -747,6 +787,293 @@ async function doGenerate() {
     err.innerHTML=`<div class="alert alert-error">${esc(e.message)}</div>`
     btn.disabled=false
   }
+}
+
+// ── QUOTE PREVIEW HTML BUILDER ───────────────────────────────────────────────
+// Colors mirror the DOCX generator exactly so all three outputs look identical
+function buildQuoteHTML(forPrint) {
+  const d=S.extracted, v=S.vendor
+  const items=S.items.filter(i=>i.description||i.qty)
+  const grand=grandTotal(), fr=parseFloat(v.freight||0), tx=parseFloat(v.tax_rate||0)
+  const tax=grand*(tx/100), final=grand+fr+tax
+  const hasPrice=items.some(i=>i.unit_price)
+  const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
+  const validity=S.validity||'30 days'
+
+  // DOCX-matched palette
+  const hdrLeft='#EFEFEF', hdrRight='#F5F5F5', labelCol='#F0F0F0'
+  const liHdr='#1A1A1A', rowEven='#FFFFFF', rowOdd='#F7F9FC', totRow='#F0F0F0'
+  const navy='#000000', dgray='#333333', border='#D0D0D0'
+
+  // Section heading — matches DOCX heading() underline style
+  const sec=txt=>`<div style="font-family:Calibri,Arial,sans-serif;font-size:11pt;font-weight:700;color:${navy};border-bottom:1.5px solid #1A1A1A;padding-bottom:3px;margin:18px 0 8px">${txt}</div>`
+
+  const logoHtml = v.logo_b64
+    ? `<img src="data:image/${v.logo_ext||'png'};base64,${v.logo_b64}" style="max-height:55px;max-width:160px;object-fit:contain;margin-bottom:6px;display:block" />`
+    : ''
+
+  // Solicitation info rows (matches DOCX two-column key-value table)
+  const solFields=[
+    ['Project / Subject', d.project_title],['Solicitation Number', d.solicitation_number],
+    ['Solicitation Type', d.solicitation_type||d.solicitation_type],
+    ['Issuing Agency', d.issuing_agency||d.agency],
+    ['Response Due Date', d.due_date],['NAICS Code', d.naics_code||d.naics],
+    ['PSC Code', d.psc_code||d.psc],['Set-Aside', d.set_aside],
+    ['Place of Performance', d.place_of_performance],
+  ].filter(([,v])=>v)
+
+  // Option years (matches DOCX option years table)
+  const oyHtml = (v.option_years_enabled && (v.option_years||[]).length && hasPrice) ? `
+    ${sec('OPTION YEAR PRICING SUMMARY')}
+    <table style="width:100%;border-collapse:collapse;font-size:9pt;border:1px solid ${border}">
+      ${[['Base Year (Year 1)',final],...(v.option_years||[]).map(oy=>
+          [oy.label||'Option Year',final*(1+(parseFloat(oy.pct||0)/100))])
+        ].concat([['TOTAL — All Periods', final+((v.option_years||[]).reduce((s,oy)=>s+final*(1+(parseFloat(oy.pct||0)/100)),0))]])
+        .map(([period,amt],i,arr)=>{
+          const isLast=i===arr.length-1, isFirst=i===0
+          const bg=(isFirst||isLast)?labelCol:rowEven
+          return `<tr style="background:${bg}"><td style="padding:5px 8px;border-bottom:1px solid ${border};font-weight:${isLast?'700':'400'};color:${navy}">${esc(period)}</td><td style="padding:5px 8px;border-bottom:1px solid ${border};text-align:right;font-weight:${isLast?'700':'400'};color:${dgray}">$${amt.toFixed(2)}</td></tr>`
+        }).join('')}
+    </table>` : ''
+
+  const inner = `
+    <div style="font-family:Calibri,Arial,sans-serif;font-size:9.5pt;color:${dgray};background:#fff;max-width:780px;margin:0 auto;padding:32px 36px">
+
+      <!-- HEADER: two-cell table matching DOCX layout -->
+      <table style="width:100%;border-collapse:collapse;margin-bottom:4px">
+        <tr>
+          <td style="width:50%;background:${hdrLeft};padding:12px 14px;vertical-align:top">
+            ${logoHtml}
+            <div style="font-size:15pt;font-weight:700;color:${navy}">${esc(v.company_name||'Your Company')}</div>
+            ${v.address?`<div style="font-size:9pt;color:${dgray};margin-top:2px">${esc(v.address)}</div>`:''}
+            ${v.phone?`<div style="font-size:9pt;color:${dgray}">${esc(v.phone)}</div>`:''}
+            ${v.email?`<div style="font-size:9pt;color:${dgray}">${esc(v.email)}</div>`:''}
+          </td>
+          <td style="width:50%;background:${hdrRight};padding:12px 14px;vertical-align:top">
+            <div style="font-size:13pt;font-weight:700;color:${navy}">QUOTE / PROPOSAL</div>
+            ${[
+              ['Quote #', v.quote_number],['Date', today],
+              ['Solicitation #', d.solicitation_number],['Valid For', validity],
+              v.delivery_days?['Delivery', v.delivery_days+' days ARO']:null,
+              v.prepared_by?['Prepared By', v.prepared_by]:null,
+            ].filter(Boolean).map(([l,val])=>`
+            <div style="font-size:9pt;margin-top:3px"><strong style="color:${navy}">${esc(l)}: </strong><span style="color:${dgray}">${esc(val||'')}</span></div>`).join('')}
+          </td>
+        </tr>
+      </table>
+
+      <!-- SOLICITATION INFORMATION -->
+      ${solFields.length?`${sec('SOLICITATION INFORMATION')}
+      <table style="width:100%;border-collapse:collapse;font-size:9pt;border:1px solid ${border}">
+        ${solFields.map(([l,val])=>`<tr>
+          <td style="width:33%;background:${labelCol};padding:5px 8px;font-weight:700;color:${navy};border-bottom:1px solid ${border}">${esc(l)}</td>
+          <td style="padding:5px 8px;color:${dgray};border-bottom:1px solid ${border}">${esc(String(val||''))}</td>
+        </tr>`).join('')}
+      </table>`:''}
+
+      <!-- SCOPE OF WORK -->
+      ${d.scope_of_work?`${sec('SCOPE OF WORK / REQUIREMENT')}
+      <div style="font-size:9.5pt;color:${dgray};line-height:1.6;margin-left:8px">${esc(d.scope_of_work)}</div>`:''}
+
+      <!-- QUOTE DETAILS -->
+      ${sec('QUOTE DETAILS')}
+      <table style="width:100%;border-collapse:collapse;font-size:9pt;border:1px solid ${border}">
+        <thead><tr style="background:${liHdr};color:#fff">
+          <th style="padding:7px 8px;text-align:center;width:5%">#</th>
+          <th style="padding:7px 8px;text-align:left">Description / Item</th>
+          <th style="padding:7px 8px;text-align:center;width:10%">Size/Type</th>
+          <th style="padding:7px 8px;text-align:center;width:7%">UOM</th>
+          <th style="padding:7px 8px;text-align:center;width:8%">Qty</th>
+          <th style="padding:7px 8px;text-align:right;width:12%">Unit Price</th>
+          <th style="padding:7px 8px;text-align:right;width:14%">Total</th>
+        </tr></thead>
+        <tbody>${items.length?items.map((it,i)=>{
+          const qn=parseFloat(it.qty)||null, un=parseFloat(it.unit_price)||null
+          const tot=qn&&un?qn*un:null
+          const bg=i%2===0?rowEven:rowOdd
+          return `<tr style="background:${bg}">
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${i+1}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};color:${dgray}">${esc(it.description||'N/A')}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${esc(it.size||'N/A')}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${esc(it.unit||'EA')}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${qn!=null?String(Number.isInteger(qn)?qn:qn):'N/A'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:right;color:${dgray}">${un!=null?'$'+un.toFixed(2):'N/A'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:right;color:${dgray}">${tot!=null?'$'+tot.toFixed(2):'N/A'}</td>
+          </tr>`}).join(''):`<tr><td colspan="7" style="padding:10px 8px;text-align:center;color:${dgray}">No line items</td></tr>`}</tbody>
+        <tfoot>
+          <tr style="background:${totRow}">
+            <td colspan="5" style="padding:7px 8px;text-align:right;font-weight:700;color:${navy};border-top:1px solid ${border}">GRAND TOTAL</td>
+            <td colspan="2" style="padding:7px 8px;text-align:right;font-weight:700;font-size:10.5pt;color:${navy};border-top:1px solid ${border}">${hasPrice||fr>0?'$'+final.toFixed(2):'N/A'}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      ${oyHtml}
+
+      <!-- NOTES & TERMS -->
+      ${(v.notes||v.terms)?`${sec('NOTES &amp; TERMS')}
+      ${v.notes?`<div style="font-size:9.5pt;color:${dgray};margin-left:8px;margin-bottom:6px"><strong style="color:${navy}">Notes: </strong>${esc(v.notes)}</div>`:''}
+      ${v.terms?`<div style="font-size:9.5pt;color:${dgray};margin-left:8px"><strong style="color:${navy}">Terms: </strong>${esc(v.terms)}</div>`:''}
+      `:''}
+
+      <!-- AUTHORIZED SIGNATURE -->
+      ${sec('AUTHORIZED SIGNATURE')}
+      <table style="width:100%;border-collapse:collapse;font-size:9pt;border:1px solid ${border}">
+        <tr>
+          <td style="width:50%;padding:10px 12px;vertical-align:top;border-right:1px solid ${border}">
+            <div style="margin-bottom:14px"><strong style="color:${navy}">Authorized Signature: </strong><span style="border-bottom:1px solid #999;display:inline-block;width:160px">&nbsp;</span></div>
+            <div style="margin-bottom:14px"><strong style="color:${navy}">Printed Name: </strong>${esc(v.prepared_by||'_'.repeat(24))}</div>
+            <div style="margin-bottom:14px"><strong style="color:${navy}">Title: </strong>${esc(v.title||'_'.repeat(28))}</div>
+            <div><strong style="color:${navy}">Date: </strong>${today}</div>
+          </td>
+          <td style="width:50%;padding:10px 12px;vertical-align:top">
+            <div style="margin-bottom:14px"><strong style="color:${navy}">Company: </strong>${esc(v.company_name||'')}</div>
+            <div style="margin-bottom:14px"><strong style="color:${navy}">Phone: </strong>${esc(v.phone||'_'.repeat(24))}</div>
+            <div style="margin-bottom:14px"><strong style="color:${navy}">Email: </strong>${esc(v.email||'_'.repeat(24))}</div>
+            <div><strong style="color:${navy}">SAM UEI: </strong>${esc(v.sam_uei||'_'.repeat(20))}</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- FOOTER -->
+      <div style="text-align:center;font-size:8pt;color:#999;margin-top:20px;font-style:italic">
+        Quote valid for ${esc(validity)} from ${today}.
+      </div>
+    </div>`
+
+  if (!forPrint) return inner
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>*{box-sizing:border-box}body{margin:0;padding:0;background:#fff}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body>${inner}</body></html>`
+}
+
+// ── PDF GENERATION ───────────────────────────────────────────────────────────
+async function doGeneratePdf() {
+  const btn=document.getElementById('pdf-btn')
+  const prog=document.getElementById('gen-prog')
+  const err=document.getElementById('gen-err')
+  btn.disabled=true; prog.classList.remove('hidden'); err.classList.add('hidden')
+  try {
+    const html=buildQuoteHTML(true)
+    const sol=(S.extracted.solicitation_number||'Quote').replace(/[^A-Za-z0-9\-_]/g,'_')
+    const name=`Quote_${sol}.pdf`
+    if(window.api){
+      const bytes=await window.api.generatePdf({html})
+      prog.classList.add('hidden')
+      const res=await window.api.savePdf({bytes,name})
+      if(res.success){
+        const ok=document.getElementById('gen-ok')
+        ok.classList.remove('hidden')
+      }
+    } else {
+      // Browser fallback: print dialog
+      prog.classList.add('hidden')
+      const w=window.open('','_blank')
+      w.document.write(html); w.document.close()
+      w.print()
+    }
+  } catch(e) {
+    prog.classList.add('hidden'); err.classList.remove('hidden')
+    err.innerHTML=`<div class="alert alert-error">${esc(e.message)}</div>`
+  }
+  btn.disabled=false
+}
+
+// ── TAB KEY NAV IN LINE ITEMS TABLE ─────────────────────────────────────────
+function setupLineItemTabNav() {
+  const tbody=document.getElementById('li-tbody')
+  if(!tbody) return
+  tbody.addEventListener('keydown', function(e){
+    if(e.key!=='Tab') return
+    const inputs=[...tbody.querySelectorAll('input,select,textarea')]
+    const idx=inputs.indexOf(document.activeElement)
+    if(idx===-1) return
+    e.preventDefault()
+    const next=e.shiftKey?inputs[idx-1]:inputs[idx+1]
+    if(next){
+      next.focus(); next.select&&next.select()
+    } else if(!e.shiftKey){
+      // Past last cell of last row: add a new row and focus its first input
+      addRow()
+      const newInputs=[...document.getElementById('li-tbody').querySelectorAll('input,select,textarea')]
+      if(newInputs.length) { newInputs[newInputs.length-5]?.focus() } // first input of new row (5 inputs per row)
+    }
+  })
+}
+
+// ── CSV IMPORT ───────────────────────────────────────────────────────────────
+function openCsvModal() {
+  document.getElementById('csv-paste').value=''
+  document.getElementById('csv-file-name').textContent=''
+  document.getElementById('csv-err').classList.add('hidden')
+  document.getElementById('csv-modal-overlay').classList.remove('hidden')
+}
+function closeCsvModal() { document.getElementById('csv-modal-overlay').classList.add('hidden') }
+
+function csvPickFile() {
+  const inp=document.createElement('input')
+  inp.type='file'; inp.accept='.csv,.txt'
+  inp.onchange=()=>{
+    const file=inp.files[0]; if(!file) return
+    document.getElementById('csv-file-name').textContent=file.name
+    const reader=new FileReader()
+    reader.onload=ev=>{ document.getElementById('csv-paste').value=ev.target.result }
+    reader.readAsText(file)
+  }
+  inp.click()
+}
+
+function parseCsvLine(line) {
+  // RFC 4180: handle quoted fields with embedded commas/newlines
+  const fields=[]
+  let cur='', inQ=false
+  for(let i=0;i<line.length;i++){
+    const ch=line[i]
+    if(ch==='"'){
+      if(inQ && line[i+1]==='"'){ cur+='"'; i++ }
+      else inQ=!inQ
+    } else if(ch===','&&!inQ){
+      fields.push(cur.trim()); cur=''
+    } else { cur+=ch }
+  }
+  fields.push(cur.trim())
+  return fields
+}
+
+function doImportCsv() {
+  const raw=document.getElementById('csv-paste').value.trim()
+  const errEl=document.getElementById('csv-err')
+  if(!raw){ errEl.innerHTML='<div class="alert alert-error">Paste CSV text or pick a file first.</div>'; errEl.classList.remove('hidden'); return }
+
+  const lines=raw.split(/\r?\n/).filter(l=>l.trim())
+  if(!lines.length){ errEl.innerHTML='<div class="alert alert-error">No data found.</div>'; errEl.classList.remove('hidden'); return }
+
+  // Auto-detect and skip header row
+  const firstCols=parseCsvLine(lines[0]).map(c=>c.toLowerCase())
+  const hasHeader=firstCols.some(c=>['description','desc','item','name','product'].includes(c))
+  const dataLines=hasHeader ? lines.slice(1) : lines
+
+  const imported=[]
+  for(const line of dataLines){
+    if(!line.trim()) continue
+    const cols=parseCsvLine(line)
+    // Expected: Description, Size/Type, UOM, Qty, Unit Price
+    const description=cols[0]||''
+    const size=cols[1]||''
+    const unit=(cols[2]||'EA').toUpperCase()||'EA'
+    const qty=parseFloat(cols[3])||''
+    const unit_price=parseFloat(cols[4])||''
+    if(!description && !qty) continue
+    imported.push({id:imported.length+1,description,size,unit,qty,unit_price})
+  }
+
+  if(!imported.length){ errEl.innerHTML='<div class="alert alert-error">No valid rows found. Check column order: Description, Size/Type, UOM, Qty, Unit Price.</div>'; errEl.classList.remove('hidden'); return }
+
+  if(S.items.length===1 && !S.items[0].description && !S.items[0].qty){
+    S.items=imported
+  } else {
+    S.items=[...S.items,...imported]
+  }
+  closeCsvModal()
+  render(3)
 }
 
 function startOver() {
