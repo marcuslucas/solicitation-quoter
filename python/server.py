@@ -293,8 +293,10 @@ def generate_quote(solicitation, vendor, line_items):
 
     def fmt_num(v):
         """Return float for a numeric value, or None if it is N/A / blank / unparseable."""
-        if v in ("N/A", "", None): return None
-        try: return float(v)
+        if v is None or v == "" or v == "N/A": return None
+        try:
+            f = float(v)
+            return None if (f != f) else f  # reject NaN
         except (ValueError, TypeError): return None
 
     def no_borders(table):
@@ -431,7 +433,7 @@ def generate_quote(solicitation, vendor, line_items):
         total_n = (qty_n * up_n) if (qty_n is not None and up_n is not None) else None
         if total_n is not None: grand += total_n; has_any_price = True
         bcolor="FFFFFF" if i%2==0 else "F7F9FC"
-        qty_s   = (str(int(qty_n)) if qty_n == int(qty_n) else str(qty_n)) if qty_n is not None else "N/A"
+        qty_s   = (str(int(qty_n)) if qty_n is not None and qty_n == int(qty_n) else str(qty_n)) if qty_n is not None else "N/A"
         up_s    = f"${up_n:,.2f}" if up_n is not None else "N/A"
         total_s = f"${total_n:,.2f}" if total_n is not None else "N/A"
         desc    = item.get("description","") or "N/A"

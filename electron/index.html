@@ -371,7 +371,8 @@ function step1(c) {
   </div>
   <div id="parse-err" class="hidden"></div>`
 
-  if (S.file || S.filePath) showFile(S.file || { name: S.filePath.split(/[/\\]/).pop() })
+  if (S.file) showFile(S.file)
+  else if (S.filePath) showFile({ name: S.filePath.split(/[/\\]/).pop() })
 }
 
 function onDragOver(e) { e.preventDefault(); document.getElementById('dz').classList.add('over') }
@@ -447,11 +448,15 @@ async function doParse() {
     p(100, 'Done!')
     S.extracted = data.data
     // Populate line items immediately from parse result
-    if (data.data.ai_line_items?.length) {
-      S.items = data.data.ai_line_items
+    const aiItems = Array.isArray(data.data.ai_line_items) ? data.data.ai_line_items.filter(i=>i&&typeof i==='object') : []
+    if (aiItems.length) {
+      S.items = aiItems.map((i,idx) => ({
+        id:idx+1, description:String(i.description||''), size:String(i.size||''),
+        unit:String(i.unit||'EA'), qty:i.qty??'', unit_price:i.unit_price??''
+      }))
     } else if (data.data.quantities?.length) {
       S.items = data.data.quantities.map((q,idx) => ({
-        id:idx+1, description: data.data.project_title||'', size:q.size||'', unit:'EA', qty:q.qty, unit_price:''
+        id:idx+1, description: data.data.project_title||'', size:q.size||'', unit:'EA', qty:q.qty||'', unit_price:''
       }))
     }
     S.done.add(1)
@@ -672,11 +677,15 @@ function saveVendor() {
 }
 
 function lineTotal(it) {
-  const t = parseFloat(it.qty||0)*parseFloat(it.unit_price||0)
+  const q=parseFloat(it.qty), p=parseFloat(it.unit_price)
+  const t = (isNaN(q)||isNaN(p)) ? 0 : q*p
   return t>0?'$'+t.toFixed(2):'–'
 }
 function grandTotal() {
-  return S.items.reduce((s,it)=>s+parseFloat(it.qty||0)*parseFloat(it.unit_price||0),0)
+  return S.items.reduce((s,it)=>{
+    const q=parseFloat(it.qty), p=parseFloat(it.unit_price)
+    return s + ((isNaN(q)||isNaN(p)) ? 0 : q*p)
+  }, 0)
 }
 function updTotals() {
   S.items.forEach((it,i)=>{ const e=document.getElementById('lt'+i); if(e)e.textContent=lineTotal(it) })
@@ -686,7 +695,7 @@ function updTotals() {
   if(ge)ge.textContent='$'+g.toFixed(2); if(fe)fe.textContent='$'+fin.toFixed(2)
 }
 function addRow() { S.items.push({id:S.items.length+1,description:'',size:'',unit:'EA',qty:'',unit_price:''}); render(3) }
-function addRows() { const n=parseInt(prompt('How many rows?','5')); if(n>0){for(let i=0;i<n;i++)S.items.push({id:S.items.length+1,description:'',size:'',unit:'EA',qty:'',unit_price:''}); render(3)} }
+function addRows() { const raw=prompt('How many rows?','5'); if(raw===null) return; const n=parseInt(raw); if(!isNaN(n)&&n>0&&n<=100){for(let i=0;i<n;i++)S.items.push({id:S.items.length+1,description:'',size:'',unit:'EA',qty:'',unit_price:''}); render(3)} }
 function dupRow(i) { S.items.splice(i+1,0,{...S.items[i]}); render(3) }
 function delRow(i) { if(S.items.length>1){S.items.splice(i,1); render(3)} }
 function clearRows() { if(confirm('Clear all line items?')){S.items=[{id:1,description:'',size:'',unit:'EA',qty:'',unit_price:''}];render(3)} }
@@ -798,7 +807,7 @@ function buildQuoteHTML(forPrint) {
   const tax=grand*(tx/100), final=grand+fr+tax
   const hasPrice=items.some(i=>i.unit_price)
   const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
-  const validity=S.validity||'30 days'
+  const validity=v.validity_period||S.validity||'30 days'
 
   // DOCX-matched palette
   const hdrLeft='#EFEFEF', hdrRight='#F5F5F5', labelCol='#F0F0F0'
@@ -815,8 +824,8 @@ function buildQuoteHTML(forPrint) {
   // Solicitation info rows (matches DOCX two-column key-value table)
   const solFields=[
     ['Project / Subject', d.project_title],['Solicitation Number', d.solicitation_number],
-    ['Solicitation Type', d.solicitation_type||d.solicitation_type],
-    ['Issuing Agency', d.issuing_agency||d.agency],
+    ['Solicitation Type', d.solicitation_type],
+    ['Issuing Agency', d.issuing_agency||d.agency||d.contact_agency],
     ['Response Due Date', d.due_date],['NAICS Code', d.naics_code||d.naics],
     ['PSC Code', d.psc_code||d.psc],['Set-Aside', d.set_aside],
     ['Place of Performance', d.place_of_performance],
@@ -846,6 +855,7 @@ function buildQuoteHTML(forPrint) {
             ${logoHtml}
             <div style="font-size:15pt;font-weight:700;color:${navy}">${esc(v.company_name||'Your Company')}</div>
             ${v.address?`<div style="font-size:9pt;color:${dgray};margin-top:2px">${esc(v.address)}</div>`:''}
+            ${v.city_state_zip?`<div style="font-size:9pt;color:${dgray}">${esc(v.city_state_zip)}</div>`:''}
             ${v.phone?`<div style="font-size:9pt;color:${dgray}">${esc(v.phone)}</div>`:''}
             ${v.email?`<div style="font-size:9pt;color:${dgray}">${esc(v.email)}</div>`:''}
           </td>
@@ -896,7 +906,7 @@ function buildQuoteHTML(forPrint) {
             <td style="padding:6px 8px;border-bottom:1px solid ${border};color:${dgray}">${esc(it.description||'N/A')}</td>
             <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${esc(it.size||'N/A')}</td>
             <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${esc(it.unit||'EA')}</td>
-            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${qn!=null?String(Number.isInteger(qn)?qn:qn):'N/A'}</td>
+            <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:center;color:${dgray}">${qn!=null?(Number.isInteger(qn)?qn:parseFloat(qn.toFixed(4))):'N/A'}</td>
             <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:right;color:${dgray}">${un!=null?'$'+un.toFixed(2):'N/A'}</td>
             <td style="padding:6px 8px;border-bottom:1px solid ${border};text-align:right;color:${dgray}">${tot!=null?'$'+tot.toFixed(2):'N/A'}</td>
           </tr>`}).join(''):`<tr><td colspan="7" style="padding:10px 8px;text-align:center;color:${dgray}">No line items</td></tr>`}</tbody>
@@ -1058,10 +1068,13 @@ function doImportCsv() {
     // Expected: Description, Size/Type, UOM, Qty, Unit Price
     const description=cols[0]||''
     const size=cols[1]||''
-    const unit=(cols[2]||'EA').toUpperCase()||'EA'
-    const qty=parseFloat(cols[3])||''
-    const unit_price=parseFloat(cols[4])||''
-    if(!description && !qty) continue
+    const unitRaw=(cols[2]||'').trim().toUpperCase()
+    const unit=unitRaw||'EA'
+    const qtyRaw=parseFloat(cols[3])
+    const upRaw=parseFloat(cols[4])
+    const qty=isNaN(qtyRaw)?'':qtyRaw
+    const unit_price=isNaN(upRaw)?'':upRaw
+    if(!description && qty==='') continue
     imported.push({id:imported.length+1,description,size,unit,qty,unit_price})
   }
 
@@ -1079,10 +1092,12 @@ function doImportCsv() {
 function startOver() {
   if(!confirm('Start a new quote? Current data will be cleared.')) return
   try { localStorage.removeItem('session') } catch(e) {}
-  S.step=1; S.done=new Set(); S.file=null; S.filePath=null; S.extracted={}; S.items=[]
+  S.step=1; S.done=new Set(); S.file=null; S.filePath=null; S.extracted={}
+  S.items=[{id:1,description:'',size:'',unit:'EA',qty:'',unit_price:''}]
   S.vendor.quote_number = ''
   delete S._pendingSession
-  document.getElementById('tf').textContent=''; goTo(1)
+  const tf=document.getElementById('tf'); if(tf) tf.textContent=''
+  goTo(1)
 }
 
 // ── SETTINGS ─────────────────────────────────────────────────────────────────
