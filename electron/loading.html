@@ -1,12 +1,45 @@
 <!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0D1117;color:#C9D1D9;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:20px}
-.logo{font-size:28px;font-weight:700}.logo span{color:#C9D1D9}
-.sub{font-size:13px;color:#8B949E}
-.spin{width:36px;height:36px;border:3px solid #30363D;border-top-color:#C9D1D9;border-radius:50%;animation:s .8s linear infinite}
+:root{
+  --bg:#030C03;--text:#00CC33;--muted:#2a5e2a;
+  --gold:#00FF41;--border:#1a3d1a;
+  --font:Calibri,'Calibri',sans-serif;--scanline-opacity:0.07;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:20px}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,var(--scanline-opacity)) 2px,rgba(0,0,0,var(--scanline-opacity)) 4px);pointer-events:none}
+.logo{font-size:26px;font-weight:700;text-transform:uppercase;letter-spacing:3px}.logo span{color:var(--gold)}
+.sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px}
+.spin{width:36px;height:36px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:s .8s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
-.status{font-size:12px;color:#8B949E}
-</style></head><body>
+.status{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+/* theme structural overrides */
+[data-theme="iron"] body::after{display:none}
+[data-theme="phantom"] .spin{box-shadow:0 0 10px rgba(0,212,255,.3)}
+[data-theme="forge"] .spin{box-shadow:0 0 10px rgba(232,90,26,.3)}
+[data-theme="specter"] .spin{box-shadow:0 0 10px rgba(0,255,65,.3)}
+</style>
+<script>
+(function(){
+  try {
+    const THEMES = {
+      specter:{vars:{'--bg':'#030C03','--text':'#00CC33','--muted':'#2a5e2a','--gold':'#00FF41','--border':'#1a3d1a','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.07'}},
+      phantom:{vars:{'--bg':'#000000','--text':'#C0D8E8','--muted':'#404858','--gold':'#00D4FF','--border':'#111111','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.04'}},
+      sector: {vars:{'--bg':'#0C0E08','--text':'#E8DDB0','--muted':'#7A7840','--gold':'#C8AB32','--border':'#2E3020','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.06'}},
+      forge:  {vars:{'--bg':'#0F0C0A','--text':'#F5DCC8','--muted':'#8A6040','--gold':'#E85A1A','--border':'#3A2518','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.06'}},
+      wraith: {vars:{'--bg':'#07090D','--text':'#C8D8E8','--muted':'#4A6080','--gold':'#5B8AB8','--border':'#1A2535','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.05'}},
+      iron:   {vars:{'--bg':'#E8E4DC','--text':'#1A1814','--muted':'#6B6560','--gold':'#C0281E','--border':'#CBC2B8','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0'}}
+    }
+    const id = localStorage.getItem('sq-theme') || 'specter'
+    const t = THEMES[id]
+    if (t) {
+      const r = document.documentElement
+      Object.entries(t.vars).forEach(([k,v]) => r.style.setProperty(k, v))
+      document.body.dataset.theme = id
+    }
+  } catch(e) {}
+})()
+</script>
+</head><body>
 <div class="logo">Sol<span>Quoter</span></div>
 <div class="sub">Solicitation Quote Generator</div>
 <div class="spin"></div>
