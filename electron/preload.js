@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('api', {
   pickLogo:    ()      => ipcRenderer.invoke('pick-logo'),
   generatePdf: (opts)  => ipcRenderer.invoke('generate-pdf', opts),
   savePdf:     (opts)  => ipcRenderer.invoke('save-pdf', opts),
+  exportData:  (opts)  => ipcRenderer.invoke('export-data', opts),
 })
