@@ -131,7 +131,14 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
 .quote-preview-wrap{background:#fff;border-radius:0;overflow:auto;max-height:520px}
 
 /* Theme picker */
-.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.theme-grid{display:flex;flex-direction:column;gap:0;margin-top:4px}
+.theme-featured,.theme-legacy{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.theme-legacy{margin-top:10px}
+.theme-legacy-toggle{display:flex;align-items:center;justify-content:space-between;padding:8px 2px;margin-top:12px;cursor:pointer;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);border-top:1px solid var(--border);user-select:none;transition:color .15s}
+.theme-legacy-toggle:hover{color:var(--text)}
+.theme-legacy-chevron{font-size:12px;transition:transform .2s}
+.theme-legacy-chevron.open{transform:rotate(90deg)}
+.theme-section-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px;opacity:.6}
 .theme-card{border:1px solid var(--border);border-radius:var(--r);padding:12px;cursor:pointer;transition:all .15s;background:var(--bg3);position:relative}
 .theme-card:hover{border-color:var(--text)}
 .theme-card.active{border-color:var(--gold)}
@@ -319,6 +326,62 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--red)!important}
 [data-theme="prism"] .theme-card{border-radius:12px;border:1px solid #E5E5EA}
 [data-theme="prism"] .theme-card:hover{border-color:var(--text)}
 [data-theme="prism"] .theme-card.active{border-color:var(--gold)}
+
+/* ── PRISM DARK: iOS dark mode — OLED black, elevated surfaces, bright blue ── */
+[data-theme="prism-dark"] body::after{display:none}
+[data-theme="prism-dark"] .sidebar{background:#1C1C1E;border-right:0.5px solid #3A3A3C}
+[data-theme="prism-dark"] .sidebar-header{border-bottom:0.5px solid #3A3A3C}
+[data-theme="prism-dark"] .sidebar-footer{border-top:0.5px solid #3A3A3C}
+[data-theme="prism-dark"] .brand{font-weight:700;letter-spacing:-0.3px;text-transform:none;font-size:16px}
+[data-theme="prism-dark"] .brand-sub{text-transform:none;letter-spacing:0;font-size:11px}
+[data-theme="prism-dark"] .topbar{background:#1C1C1E;border-bottom:0.5px solid #3A3A3C}
+[data-theme="prism-dark"] .topbar-title{text-transform:none;letter-spacing:-0.2px;font-size:14px;font-weight:600}
+[data-theme="prism-dark"] .nav-item{border-radius:9px;border:none;margin:1px 6px;width:calc(100% - 12px);font-size:12px;text-transform:none;letter-spacing:0}
+[data-theme="prism-dark"] .nav-item:hover{background:rgba(255,255,255,0.07);border-color:transparent}
+[data-theme="prism-dark"] .nav-item.active{background:rgba(10,132,255,0.18);border-color:transparent;color:var(--gold);font-weight:600}
+[data-theme="prism-dark"] .nav-item.active .step-num{background:var(--gold);color:#fff}
+[data-theme="prism-dark"] .step-num{border-radius:50%}
+[data-theme="prism-dark"] .settings-btn{border-radius:9px;text-transform:none;letter-spacing:0;font-size:12px}
+[data-theme="prism-dark"] .card{border-radius:13px;border:none;box-shadow:0 1px 3px rgba(0,0,0,0.4),0 1px 2px rgba(0,0,0,0.3)}
+[data-theme="prism-dark"] .card-title{text-transform:uppercase;font-size:11px;letter-spacing:0.04em;color:var(--muted);font-weight:600;border-bottom:0.5px solid #3A3A3C;padding-bottom:10px;margin-bottom:16px}
+[data-theme="prism-dark"] .dot{border-radius:50%}
+[data-theme="prism-dark"] input,[data-theme="prism-dark"] textarea,[data-theme="prism-dark"] select{background:#2C2C2E;border:none;border-radius:9px;font-size:14px;padding:9px 12px}
+[data-theme="prism-dark"] input:focus,[data-theme="prism-dark"] textarea:focus,[data-theme="prism-dark"] select:focus{box-shadow:0 0 0 3px rgba(10,132,255,0.3);color:var(--text);background:#2C2C2E}
+[data-theme="prism-dark"] .btn-primary{background:var(--gold);color:#fff;border:none;border-radius:10px;text-transform:none;letter-spacing:0;font-size:14px;font-weight:600}
+[data-theme="prism-dark"] .btn-primary:hover{background:var(--gold2);border:none;box-shadow:0 3px 10px rgba(10,132,255,0.35)}
+[data-theme="prism-dark"] .btn-ghost{border-radius:10px;border:1px solid #3A3A3C;color:var(--gold);text-transform:none;letter-spacing:0;font-size:13px}
+[data-theme="prism-dark"] .btn-ghost:hover{background:rgba(10,132,255,0.1);border-color:var(--gold)}
+[data-theme="prism-dark"] .btn-danger{border-radius:10px;text-transform:none;letter-spacing:0}
+[data-theme="prism-dark"] .btn-success{border-radius:10px;color:#fff;text-transform:none;letter-spacing:0}
+[data-theme="prism-dark"] .dropzone{border-radius:13px;border:1.5px dashed #3A3A3C}
+[data-theme="prism-dark"] .dropzone:hover,[data-theme="prism-dark"] .dropzone.over{border-color:var(--gold);background:rgba(10,132,255,0.06)}
+[data-theme="prism-dark"] .dz-title{text-transform:none;letter-spacing:0;font-size:15px;font-weight:600}
+[data-theme="prism-dark"] .dz-sub{text-transform:none;letter-spacing:0}
+[data-theme="prism-dark"] .pill{border-radius:20px;border:none;background:#2C2C2E;color:var(--muted)}
+[data-theme="prism-dark"] .data-item{border-radius:10px;border:none;background:#2C2C2E;box-shadow:0 1px 2px rgba(0,0,0,0.4)}
+[data-theme="prism-dark"] .data-item input:focus{background:#3A3A3C;box-shadow:none}
+[data-theme="prism-dark"] .tbl th{background:#2C2C2E;border-bottom:0.5px solid #3A3A3C;text-transform:uppercase;font-size:11px;font-weight:600;letter-spacing:0.04em}
+[data-theme="prism-dark"] .tbl td{border-bottom:0.5px solid #3A3A3C}
+[data-theme="prism-dark"] .tbl tr:hover td{background:rgba(255,255,255,0.03)}
+[data-theme="prism-dark"] .tbl .tfoot td{background:#2C2C2E;color:var(--gold)}
+[data-theme="prism-dark"] .tbl td input:focus{background:#3A3A3C;box-shadow:none}
+[data-theme="prism-dark"] .mbadge{border-radius:20px}
+[data-theme="prism-dark"] .mbadge.ai{background:rgba(10,132,255,0.15);color:var(--gold);border-color:rgba(10,132,255,0.3)}
+[data-theme="prism-dark"] .alert{border-radius:10px}
+[data-theme="prism-dark"] .alert-info{background:rgba(10,132,255,0.12);border-color:rgba(10,132,255,0.25);color:#64ACFF}
+[data-theme="prism-dark"] .alert-success{border-radius:10px}
+[data-theme="prism-dark"] .alert-error{border-radius:10px}
+[data-theme="prism-dark"] .overlay{background:rgba(0,0,0,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+[data-theme="prism-dark"] .modal{border-radius:16px;border:0.5px solid #3A3A3C;box-shadow:0 24px 64px rgba(0,0,0,0.6),0 4px 16px rgba(0,0,0,0.4)}
+[data-theme="prism-dark"] .modal h2{text-transform:none;letter-spacing:-0.2px;font-weight:700;font-size:16px}
+[data-theme="prism-dark"] .progress{border-radius:100px;height:4px}
+[data-theme="prism-dark"] .progress-fill{border-radius:100px}
+[data-theme="prism-dark"] .preflight{border-radius:10px;border:0.5px solid #3A3A3C}
+[data-theme="prism-dark"] .toast{border-radius:12px;text-transform:none;letter-spacing:0;font-size:12px}
+[data-theme="prism-dark"] .theme-card{border-radius:12px;border:1px solid #3A3A3C}
+[data-theme="prism-dark"] .theme-card:hover{border-color:var(--muted)}
+[data-theme="prism-dark"] .theme-card.active{border-color:var(--gold)}
+[data-theme="prism-dark"] .theme-legacy-toggle{border-top-color:#3A3A3C}
 </style>
 </head>
 <body>
@@ -603,6 +666,20 @@ const THEMES = {
       '--font':"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif",
       '--scanline-opacity':'0'
     }
+  },
+  'prism-dark': {
+    label: 'PRISM DARK',
+    desc: 'iOS dark mode — OLED black, elevated cards, bright blue',
+    swatches: ['#000000','#1C1C1E','#0A84FF','#FFFFFF'],
+    vars: {
+      '--navy':'#2C2C2E','--navy2':'#1C1C1E',
+      '--gold':'#0A84FF','--gold2':'#409CFF',
+      '--bg':'#000000','--bg2':'#1C1C1E','--bg3':'#2C2C2E','--panel':'#1C1C1E',
+      '--border':'#3A3A3C','--text':'#FFFFFF','--muted':'#8E8E93',
+      '--green':'#30D158','--red':'#FF453A','--r':'10px',
+      '--font':"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif",
+      '--scanline-opacity':'0'
+    }
   }
 }
 
@@ -617,18 +694,39 @@ function applyTheme(id) {
     c.classList.toggle('active', c.dataset.theme === id))
 }
 
+const FEATURED_THEMES = ['prism', 'prism-dark']
+
+function renderThemeCard(id, current) {
+  const t = THEMES[id]
+  return `<div class="theme-card${id===current?' active':''}" data-theme="${id}" onclick="applyTheme('${id}')">
+    <div class="theme-swatches">${t.swatches.map(c=>`<div class="theme-swatch" style="background:${c}"></div>`).join('')}</div>
+    <div class="theme-name">${t.label}</div>
+    <div class="theme-desc">${t.desc}</div>
+  </div>`
+}
+
 function openThemes() {
   const grid = document.getElementById('theme-grid')
-  const current = localStorage.getItem('sq-theme') || 'specter'
-  grid.innerHTML = Object.entries(THEMES).map(([id, t]) => `
-    <div class="theme-card${id===current?' active':''}" data-theme="${id}" onclick="applyTheme('${id}')">
-      <div class="theme-swatches">
-        ${t.swatches.map(c=>`<div class="theme-swatch" style="background:${c}"></div>`).join('')}
-      </div>
-      <div class="theme-name">${t.label}</div>
-      <div class="theme-desc">${t.desc}</div>
-    </div>`).join('')
+  const current = localStorage.getItem('sq-theme') || 'prism'
+  const legacy = Object.keys(THEMES).filter(id => !FEATURED_THEMES.includes(id))
+  const legacyHasActive = legacy.includes(current)
+  grid.innerHTML = `
+    <div class="theme-featured">${FEATURED_THEMES.map(id => renderThemeCard(id, current)).join('')}</div>
+    <div class="theme-legacy-toggle" onclick="toggleLegacy()" id="legacy-toggle">
+      <span>Legacy Themes</span>
+      <span class="theme-legacy-chevron${legacyHasActive?' open':''}" id="legacy-chevron">&#9656;</span>
+    </div>
+    <div class="theme-legacy${legacyHasActive?'':' hidden'}" id="legacy-section">
+      ${legacy.map(id => renderThemeCard(id, current)).join('')}
+    </div>`
   document.getElementById('themes-overlay').classList.remove('hidden')
+}
+
+function toggleLegacy() {
+  const sec = document.getElementById('legacy-section')
+  const chev = document.getElementById('legacy-chevron')
+  sec.classList.toggle('hidden')
+  chev.classList.toggle('open', !sec.classList.contains('hidden'))
 }
 
 function closeThemes() {
@@ -636,7 +734,7 @@ function closeThemes() {
 }
 
 function initTheme() {
-  const id = localStorage.getItem('sq-theme') || 'specter'
+  const id = localStorage.getItem('sq-theme') || 'prism'
   applyTheme(id)
 }
 

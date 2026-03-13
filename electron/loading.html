@@ -27,6 +27,11 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 [data-theme="prism"] .logo{font-weight:700;letter-spacing:-0.5px;text-transform:none}
 [data-theme="prism"] .sub{text-transform:none;letter-spacing:0}
 [data-theme="prism"] .status{text-transform:none;letter-spacing:0}
+[data-theme="prism-dark"] body::after{display:none}
+[data-theme="prism-dark"] .spin{border:2px solid #3A3A3C;border-top-color:var(--gold);box-shadow:none}
+[data-theme="prism-dark"] .logo{font-weight:700;letter-spacing:-0.5px;text-transform:none}
+[data-theme="prism-dark"] .sub{text-transform:none;letter-spacing:0}
+[data-theme="prism-dark"] .status{text-transform:none;letter-spacing:0}
 </style>
 <script>
 (function(){
@@ -39,9 +44,10 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
       wraith: {vars:{'--bg':'#07090D','--text':'#C8D8E8','--muted':'#4A6080','--gold':'#5B8AB8','--border':'#1A2535','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.05'}},
       iron:   {vars:{'--bg':'#E8E4DC','--text':'#1A1814','--muted':'#6B6560','--gold':'#C0281E','--border':'#CBC2B8','--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0'}},
       voss:   {vars:{'--bg':'#faf8f4','--text':'#1a1916','--muted':'#a09c92','--gold':'#c8a882','--border':'#dedad2','--font':"'Cormorant Garamond',Georgia,serif",'--scanline-opacity':'0'}},
-      prism:  {vars:{'--bg':'#F2F2F7','--text':'#1C1C1E','--muted':'#8E8E93','--gold':'#007AFF','--border':'#C6C6C8','--font':"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif",'--scanline-opacity':'0'}}
+      prism:  {vars:{'--bg':'#F2F2F7','--text':'#1C1C1E','--muted':'#8E8E93','--gold':'#007AFF','--border':'#C6C6C8','--font':"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif",'--scanline-opacity':'0'}},
+      'prism-dark':{vars:{'--bg':'#000000','--text':'#FFFFFF','--muted':'#8E8E93','--gold':'#0A84FF','--border':'#3A3A3C','--font':"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif",'--scanline-opacity':'0'}}
     }
-    const id = localStorage.getItem('sq-theme') || 'specter'
+    const id = localStorage.getItem('sq-theme') || 'prism'
     const t = THEMES[id]
     if (t) {
       const r = document.documentElement
