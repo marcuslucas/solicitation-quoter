@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>SolQuoter</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&display=swap');
 :root{
   --navy:#071407;--navy2:#0a1e0a;--gold:#00FF41;--gold2:#33FF66;
   --bg:#030C03;--bg2:#040F04;--bg3:#071407;--panel:#040F04;
@@ -227,6 +228,42 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--red)!important}
 [data-theme="iron"] .overlay{background:rgba(180,175,168,.6);backdrop-filter:blur(4px)}
 [data-theme="iron"] .modal{box-shadow:0 4px 24px rgba(0,0,0,.15)}
 [data-theme="iron"] .nav-item.done .step-num{color:#fff}
+[data-theme="voss"]{font-weight:300;letter-spacing:0.02em}
+[data-theme="voss"] .sidebar{border-right:0.5px solid var(--border)}
+[data-theme="voss"] .topbar{border-bottom:0.5px solid var(--border)}
+[data-theme="voss"] .sidebar-header{border-bottom:0.5px solid var(--border)}
+[data-theme="voss"] .sidebar-footer{border-top:0.5px solid var(--border)}
+[data-theme="voss"] .nav-item{border:none;border-left:0.5px solid transparent;transition:border-color 200ms ease,background 200ms ease}
+[data-theme="voss"] .nav-item:hover{background:rgba(26,25,22,0.04);border-left-color:var(--border)}
+[data-theme="voss"] .nav-item.active{background:rgba(200,168,130,0.08);border-color:transparent;border-left:0.5px solid var(--gold);color:var(--gold);font-weight:400}
+[data-theme="voss"] .nav-item.active .step-num{background:var(--gold);color:#faf8f4}
+[data-theme="voss"] .card{border:0.5px solid var(--border);box-shadow:none}
+[data-theme="voss"] .card-title{border-bottom:0.5px solid var(--border);padding-bottom:10px;margin-bottom:16px}
+[data-theme="voss"] input,[data-theme="voss"] textarea,[data-theme="voss"] select{border:0.5px solid var(--border);font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;font-size:15px}
+[data-theme="voss"] input:focus,[data-theme="voss"] textarea:focus,[data-theme="voss"] select:focus{border-color:var(--gold);box-shadow:none;color:var(--text)}
+[data-theme="voss"] .btn-primary{background:#1a1916;color:#faf8f4;border:none;font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;letter-spacing:0.18em;text-transform:uppercase;font-size:11px}
+[data-theme="voss"] .btn-primary:hover{background:#1a1916;border:none;opacity:0.8;box-shadow:none}
+[data-theme="voss"] .btn-ghost{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;letter-spacing:0.18em}
+[data-theme="voss"] .btn-ghost:hover{background:rgba(26,25,22,0.04);box-shadow:none}
+[data-theme="voss"] .dropzone{border:0.5px solid var(--border)}
+[data-theme="voss"] .dropzone:hover,[data-theme="voss"] .dropzone.over{border-color:var(--gold);background:rgba(200,168,130,0.05)}
+[data-theme="voss"] .tbl th{background:var(--navy2);border-bottom:0.5px solid var(--border);font-family:'Cormorant Garamond',Georgia,serif;font-weight:400;letter-spacing:0.12em}
+[data-theme="voss"] .tbl td{border-bottom:0.5px solid var(--border)}
+[data-theme="voss"] .tbl tr:hover td{background:rgba(26,25,22,0.02)}
+[data-theme="voss"] .tbl .tfoot td{background:var(--bg3);color:var(--gold)}
+[data-theme="voss"] .data-item{border:0.5px solid var(--border)}
+[data-theme="voss"] .data-item input:focus{background:var(--bg2);border-color:var(--gold)}
+[data-theme="voss"] .modal{border:0.5px solid var(--border);box-shadow:0 4px 6px rgba(26,25,22,0.08)}
+[data-theme="voss"] .modal h2{font-family:'Cormorant Garamond',Georgia,serif;font-weight:300;letter-spacing:0.15em}
+[data-theme="voss"] .alert-info{background:rgba(200,168,130,0.08);border-color:rgba(200,168,130,0.3);color:#7a6040}
+[data-theme="voss"] .mbadge.ai{background:rgba(200,168,130,0.1);color:#7a6040;border-color:rgba(200,168,130,0.3)}
+[data-theme="voss"] .overlay{background:rgba(244,241,234,0.7);backdrop-filter:blur(8px)}
+[data-theme="voss"] .progress-fill{background:var(--gold)}
+[data-theme="voss"] .pill{border:0.5px solid var(--border)}
+[data-theme="voss"] .preflight{border:0.5px solid var(--border)}
+[data-theme="voss"] .theme-card{border:0.5px solid var(--border)}
+[data-theme="voss"] .theme-card:hover{border-color:var(--text)}
+[data-theme="voss"] .theme-card.active{border-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -483,6 +520,19 @@ const THEMES = {
       '--border':'#CBC2B8','--text':'#1A1814','--muted':'#6B6560',
       '--green':'#2E6E30','--red':'#C0281E','--r':'2px',
       '--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0'
+    }
+  },
+  voss: {
+    label: 'VOSS',
+    desc: 'Architectural minimalism — warm vellum, ink, and stone',
+    swatches: ['#faf8f4','#f4f1ea','#c8a882','#1a1916'],
+    vars: {
+      '--navy':'#e8e4dc','--navy2':'#f4f1ea',
+      '--gold':'#c8a882','--gold2':'#d4b896',
+      '--bg':'#faf8f4','--bg2':'#f9f7f3','--bg3':'#f4f1ea','--panel':'#f9f7f3',
+      '--border':'#dedad2','--text':'#1a1916','--muted':'#a09c92',
+      '--green':'#5a7a5a','--red':'#a03830','--r':'0px',
+      '--font':"'Cormorant Garamond',Georgia,serif",'--scanline-opacity':'0'
     }
   }
 }
