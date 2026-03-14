@@ -66,6 +66,18 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.6}
 .btn:disabled{opacity:.3;cursor:not-allowed;pointer-events:none}
 .btn-sm{padding:5px 10px;font-size:10px}.btn-lg{padding:12px 24px;font-size:13px}
 .btn-row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+/* Speed dial */
+.speed-dial{display:flex;align-items:center;margin-bottom:4px}
+.sd-trigger{width:30px;height:30px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .35s cubic-bezier(.34,1.56,.64,1),color .15s,background .15s,border-color .15s;flex-shrink:0;padding:0;transform-origin:15px 15px}
+.sd-trigger:hover{color:var(--text);border-color:var(--text)}
+.sd-trigger.open{transform:rotate(135deg);color:var(--text);border-color:var(--text)}
+.sd-items{display:flex;align-items:center;gap:8px;padding-left:10px;max-width:0;overflow:hidden;transition:max-width .4s cubic-bezier(.4,0,.2,1)}
+.sd-items.open{max-width:600px}
+.sd-item{flex-shrink:0;opacity:0;transform:translateX(-14px);transition:opacity .2s ease,transform .3s cubic-bezier(.34,1.56,.64,1)}
+.sd-items.open .sd-item{opacity:1;transform:translateX(0)}
+.sd-items.open .sd-item:nth-child(1){transition-delay:.05s}
+.sd-items.open .sd-item:nth-child(2){transition-delay:.1s}
+.sd-items.open .sd-item:nth-child(3){transition-delay:.15s}
 
 /* Dropzone */
 .dropzone{border:2px dashed var(--border);border-radius:0;padding:48px 32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg2)}
@@ -811,10 +823,13 @@ function step1(c) {
       </div>
     </div>
   </div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px">
-    <button class="btn btn-ghost btn-sm" onclick="openAiModal()">AI Extraction${S.apiKey ? ' <span style="color:var(--green);font-size:10px">&#9679; active</span>' : ''}</button>
-    <button class="btn btn-ghost btn-sm" onclick="openSamModal()">SAM.gov Lookup</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadDemoData()">Load Demo Data</button>
+  <div class="speed-dial">
+    <button class="sd-trigger" id="sd-trigger" onclick="toggleQuickActions()" aria-label="Quick actions" aria-expanded="false" title="Quick actions"><svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="5.5" y1="0" x2="5.5" y2="11"/><line x1="0" y1="5.5" x2="11" y2="5.5"/></svg></button>
+    <div class="sd-items" id="sd-items">
+      <button class="btn btn-ghost btn-sm sd-item" onclick="openAiModal()">AI Extraction${S.apiKey ? ' <span style="color:var(--green);font-size:10px">&#9679; active</span>' : ''}</button>
+      <button class="btn btn-ghost btn-sm sd-item" onclick="openSamModal()">SAM.gov Lookup</button>
+      <button class="btn btn-ghost btn-sm sd-item" onclick="loadDemoData()">Load Demo Data</button>
+    </div>
   </div>
   <div class="btn-row">
     <button class="btn btn-primary btn-lg" id="parse-btn" onclick="doParse()" disabled>Extract Solicitation Data</button>
@@ -827,6 +842,15 @@ function step1(c) {
 
   if (S.file) showFile(S.file)
   else if (S.filePath) showFile({ name: S.filePath.split(/[/\\]/).pop() })
+}
+
+function toggleQuickActions() {
+  const trigger = document.getElementById('sd-trigger')
+  const items = document.getElementById('sd-items')
+  if (!trigger || !items) return
+  const open = items.classList.toggle('open')
+  trigger.classList.toggle('open', open)
+  trigger.setAttribute('aria-expanded', open)
 }
 
 function onDragOver(e) { e.preventDefault(); document.getElementById('dz').classList.add('over') }
