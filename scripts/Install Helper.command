@@ -1,6 +1,6 @@
 #!/bin/bash
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="SolQuoter.app"
+APP_NAME="Solicitation Quoter.app"
 APP_PATH="$SCRIPT_DIR/$APP_NAME"
 
 if [ ! -d "$APP_PATH" ]; then
@@ -9,6 +9,6 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 
 xattr -rd com.apple.quarantine "$APP_PATH" 2>/dev/null || true
-cp -R "$APP_PATH" "/Applications/$APP_NAME"
+cp -R "$APP_PATH" "/Applications/SolQuoter.app"
 
 osascript -e 'display dialog "SolQuoter installed successfully. You can now launch it from your Applications folder." buttons {"OK"} default button "OK"'
