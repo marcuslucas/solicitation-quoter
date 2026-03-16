@@ -538,6 +538,35 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--red)!important}
   </div>
 </div>
 
+<!-- PROFILES MODAL -->
+<div class="overlay hidden" id="profiles-overlay" onclick="if(event.target===this)closeProfiles()">
+  <div class="modal" style="width:520px;max-height:85vh">
+    <h2>Vendor Profiles</h2>
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Save Current</div>
+      <div style="display:flex;gap:8px">
+        <input id="profile-name-input" placeholder="Profile name..." style="flex:1" />
+        <button class="btn btn-primary btn-sm" onclick="saveCurrentProfile()">Save</button>
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Saved Profiles</div>
+      <div id="profiles-list"></div>
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Import / Export</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="exportProfiles()">Export All</button>
+        <button class="btn btn-ghost btn-sm" onclick="importProfiles()">Import</button>
+      </div>
+      <div id="import-conflicts" class="hidden" style="margin-top:12px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeProfiles()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- THEMES MODAL -->
 <div class="overlay hidden" id="themes-overlay" onclick="if(event.target===this)closeThemes()">
   <div class="modal" style="width:500px">
@@ -1039,7 +1068,7 @@ function step3(c) {
   <div>
 
       <div class="card">
-        <div class="card-title"><span class="dot"></span>Company Information</div>
+        <div class="card-title"><span class="dot"></span>Company Information<button class="btn btn-ghost btn-sm ml-auto" onclick="openProfiles()" style="-webkit-app-region:no-drag">Profiles</button></div>
         <div class="grid">
           <div class="field s2"><label>Company / Business Name *</label><input value="${esc(v.company_name)}" oninput="S.vendor.company_name=this.value" placeholder="Acme Defense Solutions LLC" /></div>
           <div class="field"><label>Street Address</label><input value="${esc(v.address)}" oninput="S.vendor.address=this.value" placeholder="123 Main Street" /></div>
