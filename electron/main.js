@@ -45,6 +45,11 @@ function startBackend() {
     const bin = process.platform === 'win32'
       ? path.join(process.resourcesPath, 'solicitationquoter-backend.exe')
       : path.join(process.resourcesPath, 'solicitationquoter-backend')
+    // On macOS, strip the quarantine xattr so Gatekeeper doesn't block the
+    // unsigned helper binary when the app is installed from a downloaded DMG.
+    if (process.platform === 'darwin') {
+      try { require('child_process').execFileSync('xattr', ['-d', 'com.apple.quarantine', bin]) } catch (_) {}
+    }
     cmd = bin; args = []
   } else {
     cmd = process.platform === 'win32' ? 'python' : 'python3'
@@ -52,7 +57,7 @@ function startBackend() {
   }
 
   backend = spawn(cmd, args, {
-    env: { ...process.env, PORT: String(PORT) },
+    env: { ...process.env, PORT: String(PORT), PYTHONUNBUFFERED: '1' },
     stdio: ['ignore','pipe','pipe'],
     windowsHide: true
   })
