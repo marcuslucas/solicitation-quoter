@@ -675,7 +675,7 @@ const THEMES = {
       '--bg':'#F2F2F7','--bg2':'#FFFFFF','--bg3':'#F2F2F7','--panel':'#FFFFFF',
       '--border':'#C6C6C8','--text':'#1C1C1E','--muted':'#8E8E93',
       '--green':'#34C759','--red':'#FF3B30','--r':'10px',
-      '--font':"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif",
+      '--font':"Calibri,'Calibri',sans-serif",
       '--scanline-opacity':'0'
     }
   },
@@ -689,7 +689,7 @@ const THEMES = {
       '--bg':'#000000','--bg2':'#1C1C1E','--bg3':'#2C2C2E','--panel':'#1C1C1E',
       '--border':'#3A3A3C','--text':'#FFFFFF','--muted':'#8E8E93',
       '--green':'#30D158','--red':'#FF453A','--r':'10px',
-      '--font':"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif",
+      '--font':"Calibri,'Calibri',sans-serif",
       '--scanline-opacity':'0'
     }
   }
@@ -725,7 +725,7 @@ function openThemes() {
   grid.innerHTML = `
     <div class="theme-featured">${FEATURED_THEMES.map(id => renderThemeCard(id, current)).join('')}</div>
     <div class="theme-legacy-toggle" onclick="toggleLegacy()" id="legacy-toggle">
-      <span>Legacy Themes</span>
+      <span>Legacy / Fun Themes</span>
       <span class="theme-legacy-chevron${legacyHasActive?' open':''}" id="legacy-chevron">&#9656;</span>
     </div>
     <div class="theme-legacy${legacyHasActive?'':' hidden'}" id="legacy-section">
