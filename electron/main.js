@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem, safeStorage } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
 const http = require('http')
@@ -219,6 +219,43 @@ ipcMain.handle('export-data', async (_, { content, filename, ext }) => {
     return { success: true }
   }
   return { success: false }
+})
+
+ipcMain.handle('open-json-file', async () => {
+  const r = await dialog.showOpenDialog(win, {
+    properties: ['openFile'],
+    filters: [{ name: 'JSON', extensions: ['json'] }]
+  })
+  if (r.canceled || !r.filePaths[0]) return null
+  return fs.readFileSync(r.filePaths[0], 'utf8')
+})
+
+function keyPath() {
+  return require('path').join(app.getPath('userData'), 'apikey.bin')
+}
+
+ipcMain.handle('store-api-key', (_, key) => {
+  if (!safeStorage.isEncryptionAvailable()) {
+    fs.writeFileSync(keyPath() + '.plain', key, 'utf8')
+    return { encrypted: false }
+  }
+  fs.writeFileSync(keyPath(), safeStorage.encryptString(key))
+  return { encrypted: true }
+})
+
+ipcMain.handle('load-api-key', () => {
+  if (!safeStorage.isEncryptionAvailable()) {
+    const plain = keyPath() + '.plain'
+    return fs.existsSync(plain) ? fs.readFileSync(plain, 'utf8') : ''
+  }
+  if (!fs.existsSync(keyPath())) return ''
+  try { return safeStorage.decryptString(fs.readFileSync(keyPath())) }
+  catch { return '' }
+})
+
+ipcMain.handle('clear-api-key', () => {
+  if (fs.existsSync(keyPath())) fs.unlinkSync(keyPath())
+  if (fs.existsSync(keyPath() + '.plain')) fs.unlinkSync(keyPath() + '.plain')
 })
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────────────────
