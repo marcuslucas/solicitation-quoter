@@ -1668,6 +1668,159 @@ function saveAiKey() {
   if (S.step === 1) render(1)
 }
 
+// ── VENDOR PROFILES ──────────────────────────────────────────────────────────
+function getProfiles() {
+  try { return JSON.parse(localStorage.getItem('vendorProfiles') || '[]') } catch { return [] }
+}
+function setProfiles(arr) {
+  try { localStorage.setItem('vendorProfiles', JSON.stringify(arr)) } catch(e) {}
+}
+function openProfiles() {
+  document.getElementById('profile-name-input').value = ''
+  document.getElementById('import-conflicts').classList.add('hidden')
+  _importBatch = null
+  renderProfilesList()
+  document.getElementById('profiles-overlay').classList.remove('hidden')
+}
+function closeProfiles() { document.getElementById('profiles-overlay').classList.add('hidden') }
+
+function renderProfilesList() {
+  const profiles = getProfiles()
+  const list = document.getElementById('profiles-list')
+  if (!profiles.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">No saved profiles.</div>'
+    return
+  }
+  list.innerHTML = profiles.map((p, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600">${esc(p.name)}</div>
+        <div style="font-size:10px;color:var(--muted)">${new Date(p.createdAt).toLocaleDateString()}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="loadProfile(${i})">Load</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteProfile(${i})">✕</button>
+    </div>`).join('')
+}
+
+function saveCurrentProfile() {
+  const name = document.getElementById('profile-name-input').value.trim()
+  if (!name) { toast('Enter a profile name', 'error'); return }
+  const profiles = getProfiles()
+  const existing = profiles.findIndex(p => p.name === name)
+  if (existing >= 0) {
+    if (!confirm(`A profile named "${name}" already exists. Overwrite it?`)) return
+    profiles[existing].vendor = { ...S.vendor }
+    profiles[existing].createdAt = new Date().toISOString()
+  } else {
+    profiles.push({ id: crypto.randomUUID(), name, createdAt: new Date().toISOString(), vendor: { ...S.vendor } })
+  }
+  setProfiles(profiles)
+  document.getElementById('profile-name-input').value = ''
+  renderProfilesList()
+  toast('Profile saved', 'success')
+}
+
+function loadProfile(i) {
+  const profiles = getProfiles()
+  const p = profiles[i]
+  if (!p) return
+  Object.assign(S.vendor, p.vendor)
+  closeProfiles()
+  render(S.step)
+  toast(`Loaded: ${p.name}`, 'success')
+}
+
+function deleteProfile(i) {
+  const profiles = getProfiles()
+  const p = profiles[i]
+  if (!p) return
+  if (!confirm(`Delete profile "${p.name}"?`)) return
+  profiles.splice(i, 1)
+  setProfiles(profiles)
+  renderProfilesList()
+  toast('Profile deleted', 'success')
+}
+
+async function exportProfiles() {
+  const profiles = getProfiles()
+  if (!profiles.length) { toast('No profiles to export', 'warn'); return }
+  if (window.api) {
+    await window.api.exportData({ content: JSON.stringify(profiles, null, 2), filename: 'solquoter-profiles', ext: 'json' })
+  }
+}
+
+let _importBatch = null
+
+async function importProfiles() {
+  if (!window.api) return
+  const text = await window.api.openJsonFile()
+  if (!text) return
+  let imported
+  try { imported = JSON.parse(text) } catch { toast('Invalid JSON file', 'error'); return }
+  if (!Array.isArray(imported)) { toast('Invalid profile file format', 'error'); return }
+
+  const existing = getProfiles()
+  const existingNames = new Set(existing.map(p => p.name))
+  const conflicts = imported.filter(p => existingNames.has(p.name))
+  const clean = imported.filter(p => !existingNames.has(p.name))
+
+  if (!conflicts.length) {
+    setProfiles([...existing, ...clean])
+    renderProfilesList()
+    toast(`Imported ${clean.length} profile${clean.length !== 1 ? 's' : ''}`, 'success')
+    return
+  }
+
+  _importBatch = { clean, conflicts, resolutions: {} }
+  renderImportConflicts()
+}
+
+function renderImportConflicts() {
+  const { conflicts, resolutions } = _importBatch
+  const container = document.getElementById('import-conflicts')
+  container.classList.remove('hidden')
+  container.innerHTML = `
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Resolve Conflicts</div>
+    ${conflicts.map((p, i) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;font-size:12px">${esc(p.name)} — already exists</div>
+        <button class="btn btn-sm ${resolutions[i]==='overwrite'?'btn-primary':'btn-ghost'}" onclick="resolveConflict(${i},'overwrite')">Overwrite</button>
+        <button class="btn btn-sm ${resolutions[i]==='skip'||resolutions[i]==null?'btn-primary':'btn-ghost'}" onclick="resolveConflict(${i},'skip')">Skip</button>
+      </div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary btn-sm" onclick="applyImport()">Apply Import</button>
+      <button class="btn btn-ghost btn-sm" onclick="cancelImport()">Cancel All</button>
+    </div>`
+}
+
+function resolveConflict(i, choice) {
+  _importBatch.resolutions[i] = choice
+  renderImportConflicts()
+}
+
+function applyImport() {
+  const { clean, conflicts, resolutions } = _importBatch
+  const existing = getProfiles()
+  let overwritten = 0
+  conflicts.forEach((p, i) => {
+    if (resolutions[i] === 'overwrite') {
+      const idx = existing.findIndex(e => e.name === p.name)
+      if (idx >= 0) { existing[idx] = p; overwritten++ }
+    }
+  })
+  setProfiles([...existing, ...clean])
+  _importBatch = null
+  document.getElementById('import-conflicts').classList.add('hidden')
+  renderProfilesList()
+  toast(`Import complete: ${clean.length} added, ${overwritten} overwritten`, 'success')
+}
+
+function cancelImport() {
+  _importBatch = null
+  document.getElementById('import-conflicts').classList.add('hidden')
+  toast('Import cancelled', 'warn')
+}
+
 // ── SAM MODAL ─────────────────────────────────────────────────────────────────
 function openSamModal() {
   document.getElementById('sam-noticeid').value = S.samNoticeId || ''
