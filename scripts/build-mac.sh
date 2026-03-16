@@ -2,10 +2,11 @@
 set -e
 
 echo "→ Installing PyInstaller..."
-pip install pyinstaller
+python3 -m pip install pyinstaller
+python3 -m pip install flask pdfplumber pypdf python-docx anthropic
 
 echo "→ Building Python backend..."
-pyinstaller --onefile --name solicitationquoter-backend --noconsole python/server.py
+python3 -m PyInstaller --onefile --name solicitationquoter-backend --noconsole python/server.py
 rm -rf dist-backend
 mv dist dist-backend
 
