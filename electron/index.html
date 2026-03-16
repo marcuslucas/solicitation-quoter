@@ -531,6 +531,7 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--red)!important}
         <button class="btn btn-ghost btn-sm" onclick="exportData('json')">Export JSON Backup</button>
       </div>
     </div>
+    <p style="font-size:10px;color:var(--muted);margin-top:14px;line-height:1.5">SolQuoter does not retain copies of your documents. Files are deleted from memory immediately after parsing.</p>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -783,7 +784,23 @@ async function init() {
   initTheme()
   if (window.api) S.port = await window.api.getPort()
   try {
-    S.apiKey = localStorage.getItem('apiKey') || ''
+    if (window.api) {
+      S.apiKey = await window.api.loadApiKey() || ''
+      if (!S.apiKey) {
+        const legacy = localStorage.getItem('apiKey') || localStorage.getItem('sq-apikey') || ''
+        if (legacy) {
+          S.apiKey = legacy
+          const result = await window.api.storeApiKey(legacy)
+          localStorage.removeItem('apiKey')
+          localStorage.removeItem('sq-apikey')
+          if (!result.encrypted) {
+            toast('API key stored. Note: OS-level encryption unavailable on this platform.', 'warn')
+          }
+        }
+      }
+    } else {
+      S.apiKey = localStorage.getItem('apiKey') || ''
+    }
     S.validity = localStorage.getItem('validity') || '30 days'
     S.samKey = localStorage.getItem('samKey') || ''
     const v = localStorage.getItem('vendor')
@@ -800,7 +817,7 @@ async function init() {
 // ── NAV ──────────────────────────────────────────────────────────────────────
 function goTo(n) {
   try {
-    const sess = {step:n, done:[...S.done], extracted:S.extracted, vendor:S.vendor, items:S.items, apiKey:S.apiKey}
+    const sess = {step:n, done:[...S.done], extracted:S.extracted, vendor:S.vendor, items:S.items}
     localStorage.setItem('session', JSON.stringify(sess))
   } catch(e) {}
   S.step = n
@@ -1625,13 +1642,13 @@ function openSettings() {
   document.getElementById('settings-overlay').classList.remove('hidden')
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.add('hidden') }
-function saveSettings() {
+async function saveSettings() {
   S.apiKey=document.getElementById('s-apikey').value.trim()
   S.validity=document.getElementById('s-validity').value.trim()
   S.samKey=document.getElementById('s-samkey').value.trim()
   S.vendor.validity_period=S.validity
   try{
-    localStorage.setItem('apiKey',S.apiKey)
+    if (window.api) await window.api.storeApiKey(S.apiKey)
     localStorage.setItem('validity',S.validity)
     localStorage.setItem('samKey',S.samKey)
   }catch(e){}
@@ -1661,9 +1678,12 @@ function openAiModal() {
   document.getElementById('ai-modal-overlay').classList.remove('hidden')
 }
 function closeAiModal() { document.getElementById('ai-modal-overlay').classList.add('hidden') }
-function saveAiKey() {
+async function saveAiKey() {
   S.apiKey = document.getElementById('m-apikey').value.trim()
-  try { localStorage.setItem('apiKey', S.apiKey) } catch(e) {}
+  if (window.api) {
+    const result = await window.api.storeApiKey(S.apiKey)
+    if (!result.encrypted) toast('Key saved. OS-level encryption unavailable on this platform.', 'warn')
+  }
   closeAiModal()
   if (S.step === 1) render(1)
 }
@@ -1924,7 +1944,6 @@ function resumeSession() {
   const sess = S._pendingSession; if (!sess) return
   S.step=sess.step; S.done=new Set(sess.done); S.extracted=sess.extracted||{}
   Object.assign(S.vendor, sess.vendor||{}); S.items=sess.items||[]
-  if(sess.apiKey) S.apiKey=sess.apiKey
   delete S._pendingSession; goTo(S.step)
 }
 function dismissSession() {
