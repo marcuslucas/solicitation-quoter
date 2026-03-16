@@ -517,23 +517,28 @@ def generate_quote(solicitation, vendor, line_items):
 @app.route("/parse", methods=["POST","OPTIONS"])
 def parse_route():
     if request.method=="OPTIONS": return jsonify({}),200
+    tmp_path = None
     try:
         if "file" not in request.files:
             return jsonify({"error":"No file uploaded"}),400
         file=request.files["file"]; api_key=request.form.get("api_key","")
         suffix=Path(file.filename).suffix
         with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as tmp:
-            file.save(tmp.name); tmp_path=tmp.name
-        try:
-            text=parse_document(tmp_path)
-            if not text.strip():
-                return jsonify({"error":"Could not extract text from document."}),400
-            data=extract_data(text,api_key)
-            return jsonify({"success":True,"data":data})
-        finally:
-            os.unlink(tmp_path)
+            tmp_path=tmp.name
+            file.save(tmp_path)
+        text=parse_document(tmp_path)
+        if not text.strip():
+            return jsonify({"error":"Could not extract text from document."}),400
+        data=extract_data(text,api_key)
+        return jsonify({"success":True,"data":data})
     except Exception as e:
         traceback.print_exc(); return jsonify({"error":str(e)}),500
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
 @app.route("/generate_quote", methods=["POST","OPTIONS"])
 def gen_route():
