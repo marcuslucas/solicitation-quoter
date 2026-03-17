@@ -133,7 +133,10 @@ def extract(text):
 
 # ── AI EXTRACTOR ─────────────────────────────────────────────────────────────
 
-def ai_extract(text, api_key):
+def ai_extract(text):
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if not api_key:
+        raise ValueError("No API key configured — set ANTHROPIC_API_KEY environment variable")
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
     if len(text) > 14000:
@@ -155,9 +158,10 @@ SOLICITATION:
 
 def extract_data(text, api_key=""):
     rules = extract(text)
-    if api_key:
+    _env_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if api_key or _env_key:
         try:
-            ai = ai_extract(text, api_key)
+            ai = ai_extract(text)
             merged = {**rules}
             for k,v in ai.items():
                 if v and v != "" and v != [] and v != {}:
@@ -521,7 +525,7 @@ def parse_route():
     try:
         if "file" not in request.files:
             return jsonify({"error":"No file uploaded"}),400
-        file=request.files["file"]; api_key=request.form.get("api_key","")
+        file=request.files["file"]
         suffix=Path(file.filename).suffix
         with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as tmp:
             tmp_path=tmp.name
@@ -529,7 +533,7 @@ def parse_route():
         text=parse_document(tmp_path)
         if not text.strip():
             return jsonify({"error":"Could not extract text from document."}),400
-        data=extract_data(text,api_key)
+        data=extract_data(text)
         return jsonify({"success":True,"data":data})
     except Exception as e:
         traceback.print_exc(); return jsonify({"error":str(e)}),500
