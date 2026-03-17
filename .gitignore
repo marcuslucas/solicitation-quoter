@@ -24,3 +24,5 @@ testdata/*.docx
 .DS_Store
 Thumbs.db
 nul
+# GSD planning docs (local only)
+.planning/
