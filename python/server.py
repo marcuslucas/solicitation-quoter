@@ -1,9 +1,93 @@
 #!/usr/bin/env python3
-import os, sys, json, re, tempfile, traceback, io
+import os, sys, json, re, tempfile, traceback, io, atexit, glob, time
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 
 app = Flask(__name__)
+
+# ── UPLOAD SECURITY CONSTANTS ─────────────────────────────────────────────────
+
+MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
+
+# Flask enforces MAX_CONTENT_LENGTH at the WSGI layer and raises a 413 before
+# the route function runs — belt-and-suspenders alongside validate_upload().
+app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_BYTES
+
+# Module-level set tracking temp files created by the current process.
+# Populated per-request in parse_route(); cleared in the finally block.
+# The atexit handler below ensures cleanup on unexpected exit.
+_active_tmp_files = set()
+
+
+def _cleanup_active_tmp_files():
+    """atexit handler — delete any temp files still registered (handles crash/SIGTERM)."""
+    for path in list(_active_tmp_files):
+        try:
+            if os.path.exists(path):
+                os.unlink(path)
+                _active_tmp_files.discard(path)
+        except Exception:
+            pass
+
+
+atexit.register(_cleanup_active_tmp_files)
+
+
+def validate_upload(file):
+    """Validate upload size and magic bytes.
+
+    Returns (error_message, status_code) on failure, or (None, None) if valid.
+    Seeks the file stream back to position 0 after reading so file.save() works.
+    """
+    # Size check — content_length may be None for chunked transfers
+    content_len = request.content_length
+    if content_len is not None and content_len > MAX_UPLOAD_BYTES:
+        return "File too large — maximum 50 MB", 413
+
+    # Magic bytes — read without saving, then seek back to 0
+    header = file.stream.read(512)
+    file.stream.seek(0)  # CRITICAL: reset before file.save()
+
+    fname = (file.filename or '').lower()
+    if fname.endswith('.pdf'):
+        if header[:4] != b'%PDF':
+            return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+    elif fname.endswith('.docx') or fname.endswith('.doc'):
+        if header[:2] != b'PK':
+            return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+    elif fname.endswith('.txt'):
+        try:
+            header.decode('utf-8')
+        except UnicodeDecodeError:
+            return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+    else:
+        return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+
+    return None, None
+
+
+def _startup_sweep():
+    """Delete stale app temp files from prior sessions (older than 1 hour)."""
+    tmp_dir = tempfile.gettempdir()
+    cutoff = time.time() - 3600
+    patterns = ['sqt_*.pdf', 'sqt_*.docx', 'sqt_*.doc', 'sqt_*.txt']
+    removed = 0
+    for pattern in patterns:
+        for f in glob.glob(os.path.join(tmp_dir, pattern)):
+            try:
+                if os.path.getmtime(f) < cutoff:
+                    os.unlink(f)
+                    removed += 1
+            except Exception:
+                pass
+    if removed:
+        print(f"[startup] Removed {removed} stale temp file(s)", flush=True)
+
+
+@app.errorhandler(413)
+def handle_request_entity_too_large(e):
+    return jsonify({"error": "File too large — maximum 50 MB"}), 413
+
 
 @app.after_request
 def cors(r):
@@ -526,16 +610,24 @@ def parse_route():
         if "file" not in request.files:
             return jsonify({"error":"No file uploaded"}),400
         file=request.files["file"]
+        # Validate size and magic bytes BEFORE saving to disk
+        error_msg, status_code = validate_upload(file)
+        if error_msg:
+            return jsonify({"error": error_msg}), status_code
         suffix=Path(file.filename).suffix
-        with tempfile.NamedTemporaryFile(delete=False,suffix=suffix) as tmp:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, prefix='sqt_') as tmp:
             tmp_path=tmp.name
-            file.save(tmp_path)
+        file.save(tmp_path)
+        _active_tmp_files.add(tmp_path)
         text=parse_document(tmp_path)
         if not text.strip():
             return jsonify({"error":"Could not extract text from document."}),400
         data=extract_data(text)
         return jsonify({"success":True,"data":data})
     except Exception as e:
+        from werkzeug.exceptions import RequestEntityTooLarge
+        if isinstance(e, RequestEntityTooLarge):
+            return jsonify({"error": "File too large — maximum 50 MB"}), 413
         traceback.print_exc(); return jsonify({"error":str(e)}),500
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -543,6 +635,8 @@ def parse_route():
                 os.unlink(tmp_path)
             except Exception:
                 pass
+        if tmp_path:
+            _active_tmp_files.discard(tmp_path)
 
 @app.route("/generate_quote", methods=["POST","OPTIONS"])
 def gen_route():
@@ -636,6 +730,7 @@ def sam_lookup():
         traceback.print_exc(); return jsonify({"error": str(e)}), 500
 
 if __name__=="__main__":
+    _startup_sweep()
     port=int(os.environ.get("PORT",5199))
     print(f"[SolicitationQuoter] Running on http://localhost:{port}")
     app.run(host="127.0.0.1",port=port,debug=False)
