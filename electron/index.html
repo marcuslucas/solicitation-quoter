@@ -986,7 +986,6 @@ async function doParse() {
   try {
     p(15, 'Uploading document...')
     const fd = new FormData()
-    fd.append('api_key', S.apiKey || '')
     if (S.file) {
       fd.append('file', S.file)
     } else if (S.filePath) {
@@ -1681,12 +1680,29 @@ function openSettings() {
 }
 function closeSettings() { document.getElementById('settings-overlay').classList.add('hidden') }
 async function saveSettings() {
-  S.apiKey=document.getElementById('s-apikey').value.trim()
+  const newKey = document.getElementById('s-apikey').value.trim()
+  const apiKeyChanged = newKey !== S.apiKey
+  S.apiKey = newKey
   S.validity=document.getElementById('s-validity').value.trim()
   S.samKey=document.getElementById('s-samkey').value.trim()
   S.vendor.validity_period=S.validity
   try{
-    if (window.api) await window.api.storeApiKey(S.apiKey)
+    if (window.api && apiKeyChanged) {
+      const result = await window.api.storeApiKey(S.apiKey)
+      if (result && result.blocked) {
+        // Key kept in memory for the session
+        showEncryptionWarning()
+        localStorage.setItem('validity',S.validity)
+        localStorage.setItem('samKey',S.samKey)
+        // Don't close settings — let user see warning in the AI modal
+        closeSettings()
+        openAiModal()
+        return
+      }
+      if (typeof toast === 'function') {
+        toast('Restarting backend with new API key...', 'info')
+      }
+    }
     localStorage.setItem('validity',S.validity)
     localStorage.setItem('samKey',S.samKey)
   }catch(e){}
@@ -1695,6 +1711,22 @@ async function saveSettings() {
 }
 
 // ── UTIL ─────────────────────────────────────────────────────────────────────
+function showEncryptionWarning() {
+  const warningId = 'encryption-warning-banner'
+  let banner = document.getElementById(warningId)
+  if (!banner) {
+    banner = document.createElement('div')
+    banner.id = warningId
+    banner.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:4px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.4;'
+    banner.textContent = 'Secure storage is unavailable on this system. Your API key cannot be saved — you will need to re-enter it each session.'
+    const keyInput = document.getElementById('m-apikey')
+    if (keyInput && keyInput.parentElement) {
+      keyInput.parentElement.insertBefore(banner, keyInput)
+    }
+  }
+  banner.style.display = 'block'
+}
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
 }
@@ -1720,7 +1752,16 @@ async function saveAiKey() {
   S.apiKey = document.getElementById('m-apikey').value.trim()
   if (window.api) {
     const result = await window.api.storeApiKey(S.apiKey)
-    if (!result.encrypted) toast('Key saved. OS-level encryption unavailable on this platform.', 'warn')
+    if (result && result.blocked) {
+      // Key kept in S.apiKey (memory only for this session)
+      showEncryptionWarning()
+      closeAiModal()
+      return
+    }
+    // Key saved and backend restarting — show reconnect indicator
+    if (typeof toast === 'function') {
+      toast('Restarting backend with new API key...', 'info')
+    }
   }
   closeAiModal()
   if (S.step === 1) render(1)
