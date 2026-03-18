@@ -90,9 +90,10 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 1 | Refactor python/server.py into thin Flask controllers. Extract all regex/extraction logic into python/extractor.py, all docx generation into python/generator.py, all constants (port, file size limits, field names) into python/constants.py. server.py routes import and delegate — no logic inline. Zero behavioral regression: /parse and /generate_quote return identical output. Reference .planning/phases/02-*/SUMMARY.md for project conventions. | 2026-03-18 | 953343a | [1-refactor-python-server-py-into-thin-flas](./quick/1-refactor-python-server-py-into-thin-flas/) |
+| 2 | Establish CSS custom property token system. Define canonical :root block with 20+ named tokens (color palette, spacing scale, typography scale, border radius). Replace all hardcoded terse aliases (--gold, --bg, --red, etc.) throughout CSS and JS inline styles with semantic --color-*/--space-*/--text-*/--radius-* names. Update theme.js THEMES vars keys to match. | 2026-03-18 | 8aa7c8f | [2-establish-a-css-custom-property-token-sy](./quick/2-establish-a-css-custom-property-token-sy/) |
 
 ## Session Continuity
 
-Last session: 2026-03-18T21:33:29.943Z
-Stopped at: Completed quick-1 PLAN.md — Python server.py refactored into thin Flask controllers
+Last session: 2026-03-18T21:58:50Z
+Stopped at: Completed quick-2 PLAN.md — CSS custom property token system established
 Resume file: None
