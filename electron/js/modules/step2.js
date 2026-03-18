@@ -36,12 +36,12 @@ function step2(c) {
   const qhtml = qtys.length ? `<div class="card">
     <div class="card-title"><span class="dot"></span>Detected Quantities</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      ${qtys.map(q=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 14px;text-align:center">
-        <div style="font-size:10px;color:var(--muted)">${q.size}</div>
-        <div style="font-size:20px;font-weight:700;color:var(--gold)">${q.qty}</div>
+      ${qtys.map(q=>`<div style="background:var(--color-surface-raised);border:1px solid var(--color-border);border-radius:6px;padding:8px 14px;text-align:center">
+        <div style="font-size:10px;color:var(--color-text-muted)">${q.size}</div>
+        <div style="font-size:20px;font-weight:700;color:var(--color-primary)">${q.qty}</div>
       </div>`).join('')}
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px">These will pre-fill your quote line items.</div>
+    <div style="font-size:11px;color:var(--color-text-muted);margin-top:8px">These will pre-fill your quote line items.</div>
   </div>` : ''
 
   c.innerHTML = `

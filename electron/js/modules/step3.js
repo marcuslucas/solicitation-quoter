@@ -308,13 +308,13 @@ function step3(c) {
 
   const rows = window.S.items.map((it, i) => `
     <tr>
-      <td style="text-align:center;color:var(--muted)">${i + 1}</td>
+      <td style="text-align:center;color:var(--color-text-muted)">${i + 1}</td>
       <td><input data-col="description" value="${window.esc(it.description || '')}" placeholder="Item description" /></td>
       <td><input data-col="size" value="${window.esc(String(it.size || ''))}" style="max-width:80px" /></td>
       <td><input data-col="unit" value="${window.esc(String(it.unit || 'EA'))}" style="max-width:55px" placeholder="EA" /></td>
-      <td><input type="number" data-col="qty" value="${window.esc(String(it.qty || ''))}" min="0" style="max-width:80px;background:var(--bg3);border:1px solid var(--border)" /></td>
-      <td><input type="number" data-col="unit_price" value="${window.esc(String(it.unit_price || ''))}" min="0" step="0.01" style="background:var(--bg3);border:1px solid var(--border)" /></td>
-      <td style="text-align:right;color:var(--gold)" id="lt${i}">${lineTotal(it)}</td>
+      <td><input type="number" data-col="qty" value="${window.esc(String(it.qty || ''))}" min="0" style="max-width:80px;background:var(--color-surface-raised);border:1px solid var(--color-border)" /></td>
+      <td><input type="number" data-col="unit_price" value="${window.esc(String(it.unit_price || ''))}" min="0" step="0.01" style="background:var(--color-surface-raised);border:1px solid var(--color-border)" /></td>
+      <td style="text-align:right;color:var(--color-primary)" id="lt${i}">${lineTotal(it)}</td>
       <td><div class="row-actions">
         <button class="btn btn-ghost btn-sm" data-action="dup">Dup</button>
         <button class="btn btn-danger btn-sm" data-action="del">✕</button>
@@ -334,7 +334,7 @@ function step3(c) {
           <input type="number" data-oy-index="${i}" data-oy-field="pct"
                  value="${window.esc(String(oy.pct || 0))}"
                  style="width:80px" min="-100" max="100" />
-          <span style="color:var(--muted);font-size:12px;white-space:nowrap">% adj.</span>
+          <span style="color:var(--color-text-muted);font-size:12px;white-space:nowrap">% adj.</span>
           <button class="btn btn-danger btn-sm" data-oy-action="remove" data-oy-index="${i}">✕</button>
         </div>`).join('')}
       ${(v.option_years || []).length < 5 ? `<button class="btn btn-ghost btn-sm" id="add-option-year-btn">+ Add Option Year</button>` : ''}
@@ -345,12 +345,12 @@ function step3(c) {
       <img src="data:image/${window.esc(v.logo_ext || 'png')};base64,${v.logo_b64}"
            style="max-height:60px;max-width:160px;object-fit:contain;border-radius:4px;background:#fff;padding:4px" />
       <div>
-        <div style="font-size:12px;color:var(--text);margin-bottom:6px">${window.esc(v.logo_name || 'Logo')}</div>
+        <div style="font-size:12px;color:var(--color-text);margin-bottom:6px">${window.esc(v.logo_name || 'Logo')}</div>
         <button class="btn btn-danger btn-sm" id="logo-remove-btn">Remove</button>
       </div>
     </div>` : `
     <button class="btn btn-ghost" id="logo-pick-btn">Upload Logo (PNG / JPG)</button>
-    <div style="font-size:11px;color:var(--muted);margin-top:6px">Appears top-left of the quote document.</div>`
+    <div style="font-size:11px;color:var(--color-text-muted);margin-top:6px">Appears top-left of the quote document.</div>`
 
   c.innerHTML = `
   <div id="vendor-form">
@@ -407,7 +407,7 @@ function step3(c) {
         <button class="btn btn-ghost btn-sm" id="add-row-btn">+ Add Row</button>
         <button class="btn btn-ghost btn-sm" id="add-rows-btn">+ Add Multiple</button>
         <button class="btn btn-ghost btn-sm" id="csv-import-btn">Import CSV</button>
-        <button class="btn btn-ghost btn-sm" id="clear-rows-btn" style="color:var(--red)">Clear All</button>
+        <button class="btn btn-ghost btn-sm" id="clear-rows-btn" style="color:var(--color-error)">Clear All</button>
         <span class="ml-auto text-muted" style="align-self:center">${window.S.items.length} item${window.S.items.length !== 1 ? 's' : ''}</span>
       </div>
     </div>
@@ -432,7 +432,7 @@ function step3(c) {
       <div class="card-title"><span class="dot"></span>Option Years</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <input type="checkbox" id="oy-on" ${v.option_years_enabled ? 'checked' : ''} style="width:auto;margin:0" />
-        <label for="oy-on" style="text-transform:none;font-size:13px;color:var(--text);font-weight:400">Include option year pricing summary in quote</label>
+        <label for="oy-on" style="text-transform:none;font-size:13px;color:var(--color-text);font-weight:400">Include option year pricing summary in quote</label>
       </div>
       ${optionYearsHtml}
     </div>

@@ -54,11 +54,11 @@ function renderHistory() {
   try {
     const h = JSON.parse(localStorage.getItem('quoteHistory') || '[]')
     el.innerHTML = h.length ? h.map(e => `
-      <div style="padding:5px 0;border-bottom:1px solid var(--border)">
-        <div style="color:var(--text)">${window.esc(e.solicitation_number||'—')} · ${window.esc(e.project_title||'—')}</div>
-        <div style="color:var(--muted);font-size:11px">${new Date(e.ts).toLocaleDateString()} · ${window.esc(e.company_name||'—')} · $${parseFloat(e.total||0).toFixed(2)}</div>
-      </div>`).join('') : '<div style="color:var(--muted)">No quotes generated yet.</div>'
-  } catch(e) { el.innerHTML = '<div style="color:var(--muted)">No history.</div>' }
+      <div style="padding:5px 0;border-bottom:1px solid var(--color-border)">
+        <div style="color:var(--color-text)">${window.esc(e.solicitation_number||'—')} · ${window.esc(e.project_title||'—')}</div>
+        <div style="color:var(--color-text-muted);font-size:11px">${new Date(e.ts).toLocaleDateString()} · ${window.esc(e.company_name||'—')} · $${parseFloat(e.total||0).toFixed(2)}</div>
+      </div>`).join('') : '<div style="color:var(--color-text-muted)">No quotes generated yet.</div>'
+  } catch(e) { el.innerHTML = '<div style="color:var(--color-text-muted)">No history.</div>' }
 }
 
 function clearHistory() {
@@ -197,14 +197,14 @@ function renderProfilesList() {
   const profiles = getProfiles()
   const list = document.getElementById('profiles-list')
   if (!profiles.length) {
-    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">No saved profiles.</div>'
+    list.innerHTML = '<div style="color:var(--color-text-muted);font-size:12px;padding:8px 0">No saved profiles.</div>'
     return
   }
   list.innerHTML = profiles.map((p, i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-border)">
       <div style="flex:1">
         <div style="font-size:12px;font-weight:600">${window.esc(p.name)}</div>
-        <div style="font-size:10px;color:var(--muted)">${new Date(p.createdAt).toLocaleDateString()}</div>
+        <div style="font-size:10px;color:var(--color-text-muted)">${new Date(p.createdAt).toLocaleDateString()}</div>
       </div>
       <button class="btn btn-ghost btn-sm" data-profile-action="load" data-profile-index="${i}">Load</button>
       <button class="btn btn-danger btn-sm" data-profile-action="delete" data-profile-index="${i}">✕</button>
@@ -297,9 +297,9 @@ function renderImportConflicts() {
   const container = document.getElementById('import-conflicts')
   container.classList.remove('hidden')
   container.innerHTML = `
-    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Resolve Conflicts</div>
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--color-text-muted);margin-bottom:8px">Resolve Conflicts</div>
     ${conflicts.map((p, i) => `
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-border)">
         <div style="flex:1;font-size:12px">${window.esc(p.name)} — already exists</div>
         <button class="btn btn-sm ${resolutions[i]==='overwrite'?'btn-primary':'btn-ghost'}" data-conflict-index="${i}" data-conflict-choice="overwrite">Overwrite</button>
         <button class="btn btn-sm ${resolutions[i]==='skip'||resolutions[i]==null?'btn-primary':'btn-ghost'}" data-conflict-index="${i}" data-conflict-choice="skip">Skip</button>

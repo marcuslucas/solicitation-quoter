@@ -479,10 +479,10 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
 <div class="overlay hidden" id="csv-modal-overlay">
   <div class="modal" style="width:520px">
     <h2>Import Line Items from CSV</h2>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Expected columns: <strong>Description, Size/Type, UOM, Qty, Unit Price</strong><br>Header row is detected and skipped automatically. Save Excel files as CSV first.</p>
+    <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:14px">Expected columns: <strong>Description, Size/Type, UOM, Qty, Unit Price</strong><br>Header row is detected and skipped automatically. Save Excel files as CSV first.</p>
     <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
       <button class="btn btn-ghost btn-sm" id="csv-pick-file-btn">Browse CSV file…</button>
-      <span id="csv-file-name" style="font-size:12px;color:var(--muted)"></span>
+      <span id="csv-file-name" style="font-size:12px;color:var(--color-text-muted)"></span>
     </div>
     <div class="field">
       <label>Or paste CSV text</label>
@@ -516,7 +516,7 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
 <div class="overlay hidden" id="sam-modal-overlay">
   <div class="modal">
     <h2>SAM.gov Lookup</h2>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Fetch solicitation data directly from SAM.gov by Notice ID — no file upload needed.</p>
+    <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:16px">Fetch solicitation data directly from SAM.gov by Notice ID — no file upload needed.</p>
     <div class="field" style="margin-bottom:12px">
       <label>Notice ID</label>
       <input id="sam-noticeid" placeholder="e.g. W911S225U1431" />
@@ -556,21 +556,21 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
       <input type="password" id="s-samkey" placeholder="From sam.gov account settings" />
       <span class="text-muted" style="font-size:11px;margin-top:4px">Free account required. Keys expire every 90 days.</span>
     </div>
-    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+    <div style="margin-top:16px;border-top:1px solid var(--color-border);padding-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Recent Quotes</span>
+        <span style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px">Recent Quotes</span>
         <button class="btn btn-ghost btn-sm" id="history-clear-btn">Clear</button>
       </div>
       <div id="history-list"></div>
     </div>
-    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
-      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Export Data</div>
+    <div style="margin-top:16px;border-top:1px solid var(--color-border);padding-top:14px">
+      <div style="font-size:11px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Export Data</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" id="export-csv-btn">Export History CSV</button>
         <button class="btn btn-ghost btn-sm" id="export-json-btn">Export JSON Backup</button>
       </div>
     </div>
-    <p style="font-size:10px;color:var(--muted);margin-top:14px;line-height:1.5">SolQuoter does not retain copies of your documents. Files are deleted from memory immediately after parsing.</p>
+    <p style="font-size:10px;color:var(--color-text-muted);margin-top:14px;line-height:1.5">SolQuoter does not retain copies of your documents. Files are deleted from memory immediately after parsing.</p>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="settings-cancel-btn">Cancel</button>
       <button class="btn btn-primary" id="settings-save-btn">Save</button>
@@ -583,18 +583,18 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
   <div class="modal" style="width:520px;max-height:85vh">
     <h2>Vendor Profiles</h2>
     <div style="margin-bottom:16px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Save Current</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--color-text-muted);margin-bottom:8px">Save Current</div>
       <div style="display:flex;gap:8px">
         <input id="profile-name-input" placeholder="Profile name..." style="flex:1" />
         <button class="btn btn-primary btn-sm" id="profiles-save-btn">Save</button>
       </div>
     </div>
     <div style="margin-bottom:16px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Saved Profiles</div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--color-text-muted);margin-bottom:8px">Saved Profiles</div>
       <div id="profiles-list"></div>
     </div>
-    <div style="border-top:1px solid var(--border);padding-top:14px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">Import / Export</div>
+    <div style="border-top:1px solid var(--color-border);padding-top:14px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--color-text-muted);margin-bottom:8px">Import / Export</div>
       <div style="display:flex;gap:8px">
         <button class="btn btn-ghost btn-sm" id="profiles-export-btn">Export All</button>
         <button class="btn btn-ghost btn-sm" id="profiles-import-btn">Import</button>
