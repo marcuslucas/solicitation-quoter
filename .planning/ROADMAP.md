@@ -7,7 +7,7 @@ This roadmap elevates an existing, working Electron + Python desktop app to prod
 ## Phases
 
 - [ ] **Phase 1: Security Hardening** - Eliminate API key exposure, validate uploads, guarantee temp file cleanup, and surface encryption warnings
-- [ ] **Phase 2: Frontend Modularization** - Break the 2100-line index.html into per-step JS modules with no inline event handlers
+- [x] **Phase 2: Frontend Modularization** - Break the 2100-line index.html into per-step JS modules with no inline event handlers (completed 2026-03-18)
 - [ ] **Phase 3: Backend Structure** - Separate Flask route controllers from extraction/generation logic; centralize constants
 - [ ] **Phase 4: CSS Design Tokens** - Establish color, spacing, and typography token system with consistent application throughout
 - [ ] **Phase 5: Interactive States & Theming** - Consistent hover/focus/active states, button variants, and scoped theme tokens
@@ -138,7 +138,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Security Hardening | 0/TBD | Not started | - |
-| 2. Frontend Modularization | 4/5 | In Progress|  |
+| 2. Frontend Modularization | 5/5 | Complete   | 2026-03-18 |
 | 3. Backend Structure | 0/TBD | Not started | - |
 | 4. CSS Design Tokens | 0/TBD | Not started | - |
 | 5. Interactive States & Theming | 0/TBD | Not started | - |
