@@ -1739,6 +1739,9 @@ async function saveSettings() {
       if (typeof toast === 'function') {
         toast('Restarting backend with new API key...', 'info')
       }
+      if (window.api && window.api.restartBackend) {
+        await window.api.restartBackend()
+      }
     }
     localStorage.setItem('validity',S.validity)
     localStorage.setItem('samKey',S.samKey)
@@ -1795,9 +1798,12 @@ async function saveAiKey() {
       closeAiModal()
       return
     }
-    // Key saved and backend restarting — show reconnect indicator
+    // Key saved — restart backend so ANTHROPIC_API_KEY takes effect
     if (typeof toast === 'function') {
       toast('Restarting backend with new API key...', 'info')
+    }
+    if (window.api && window.api.restartBackend) {
+      await window.api.restartBackend()
     }
   }
   closeAiModal()

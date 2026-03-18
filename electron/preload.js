@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('api', {
   storeApiKey: (key) => ipcRenderer.invoke('store-api-key', key),
   loadApiKey:  ()    => ipcRenderer.invoke('load-api-key'),
   clearApiKey: ()    => ipcRenderer.invoke('clear-api-key'),
+  restartBackend: () => ipcRenderer.invoke('restart-backend'),
 })
