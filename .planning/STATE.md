@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-frontend-modularization/02-03-PLAN.md
-last_updated: "2026-03-18T20:41:28.724Z"
+stopped_at: Completed 02-frontend-modularization/02-04-PLAN.md
+last_updated: "2026-03-18T20:50:20.641Z"
 last_activity: 2026-03-18 — Plan 02-01 complete — test scaffold + state.js/utils.js/theme.js extracted
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 10
 ---
 
@@ -52,6 +52,7 @@ Progress: [█░░░░░░░░░] 10%
 *Updated after each plan completion*
 | Phase 02-frontend-modularization P02 | 5 | 2 tasks | 2 files |
 | Phase 02-frontend-modularization P03 | 8 | 1 tasks | 1 files |
+| Phase 02-frontend-modularization P04 | 6 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,8 @@ Recent decisions affecting current work:
 - [Phase 02-02]: Whole-app drag-and-drop IIFE moved into step1.js — it is step1-specific (guards on window.S.step === 1)
 - [Phase 02-frontend-modularization]: Event delegation on #li-tbody — single change+click listener replaces per-row inline handlers; stable against re-renders
 - [Phase 02-frontend-modularization]: data-vendor-field attribute delegation on #vendor-form — consistent with data-field pattern from step2
+- [Phase 02-frontend-modularization]: Settings/profiles/modal orchestration extracted to index.js as cross-cutting concerns, not step-specific
+- [Phase 02-frontend-modularization]: data-action attributes on sidebar buttons for no-inline-handler targeting in wireStaticHandlers()
 
 ### Pending Todos
 
@@ -81,6 +84,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T20:41:28.717Z
-Stopped at: Completed 02-frontend-modularization/02-03-PLAN.md
+Last session: 2026-03-18T20:50:20.635Z
+Stopped at: Completed 02-frontend-modularization/02-04-PLAN.md
 Resume file: None
