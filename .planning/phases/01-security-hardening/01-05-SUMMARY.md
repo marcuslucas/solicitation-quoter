@@ -88,11 +88,11 @@ None - plan executed exactly as written.
 None.
 
 ## User Setup Required
-None - no external service configuration required. Human verification checkpoint (Task 3) awaits user testing.
+None - no external service configuration required.
 
 ## Next Phase Readiness
-- SEC-05 IPC contract is fully correct; human verification checkpoint is next
-- Backend will receive ANTHROPIC_API_KEY via env after user saves key in UI
+- SEC-05 fully verified: human checkpoint approved (both Test A and Test B passed)
+- Backend receives ANTHROPIC_API_KEY via env after user saves key in UI
 - Plaintext key write path is fully eliminated
 
 ---
