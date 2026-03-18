@@ -910,11 +910,43 @@ function toggleQuickActions() {
 
 function onDragOver(e) { e.preventDefault(); document.getElementById('dz').classList.add('over') }
 function onDragLeave() { document.getElementById('dz').classList.remove('over') }
+
+// SEC-02/SEC-03: validate dropped file type by extension before accepting.
+// Returns true if valid, shows error and returns false if not.
+function validateDroppedFile(f) {
+  if (!f) return false
+  // Folders: File object with size 0 and no usable extension, or webkitRelativePath set
+  if (f.webkitRelativePath && f.webkitRelativePath !== '') {
+    showFileError('Folders are not supported — please drop a PDF, DOCX, or TXT file.')
+    return false
+  }
+  const name = (f.name || '').toLowerCase()
+  if (!name.match(/\.(pdf|docx|doc|txt)$/)) {
+    showFileError('Unsupported file type — only PDF, DOCX, and TXT files are accepted.')
+    return false
+  }
+  return true
+}
+
+function showFileError(msg) {
+  const errEl = document.getElementById('parse-err')
+  if (errEl) {
+    errEl.classList.remove('hidden')
+    errEl.innerHTML = `<div class="alert alert-error">${msg}</div>`
+  }
+  // Also clear any previously accepted file
+  const fi = document.getElementById('file-info')
+  if (fi) fi.classList.add('hidden')
+  const btn = document.getElementById('parse-btn')
+  if (btn) btn.disabled = true
+  S.file = null; S.filePath = null
+}
+
 function onDrop(e) {
   e.preventDefault()
   document.getElementById('dz').classList.remove('over')
   const f = e.dataTransfer.files[0]
-  if (f) { S.file = f; S.filePath = null; showFile(f) }
+  if (f && validateDroppedFile(f)) { S.file = f; S.filePath = null; showFile(f) }
 }
 
 // Whole-app drag-and-drop — page 1 only
@@ -939,7 +971,7 @@ function onDrop(e) {
     overlay().classList.remove('active')
     document.getElementById('dz')?.classList.remove('over')
     const f = e.dataTransfer.files[0]
-    if (f) { S.file = f; S.filePath = null; showFile(f) }
+    if (f && validateDroppedFile(f)) { S.file = f; S.filePath = null; showFile(f) }
   })
 })()
 
@@ -984,6 +1016,11 @@ async function doParse() {
   prog.classList.remove('hidden'); err.classList.add('hidden'); btn.disabled = true
   const p = (pct, m) => { bar.style.width=pct+'%'; msg.textContent=m }
   try {
+    // SEC-02/SEC-03: Belt-and-suspenders file type check before upload
+    const fileNameToCheck = S.file ? S.file.name : (S.filePath ? S.filePath.split(/[/\\]/).pop() : '')
+    if (!fileNameToCheck.match(/\.(pdf|docx|doc|txt)$/i)) {
+      throw new Error('Unsupported file type — only PDF, DOCX, and TXT files are accepted.')
+    }
     p(15, 'Uploading document...')
     const fd = new FormData()
     if (S.file) {

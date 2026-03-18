@@ -91,7 +91,13 @@ def handle_request_entity_too_large(e):
 
 @app.after_request
 def cors(r):
-    r.headers["Access-Control-Allow-Origin"] = "http://127.0.0.1:5199"
+    # Allow requests from the Electron renderer (loaded from file://, which sends
+    # Origin: null) and from any localhost:5199 page during development.
+    origin = request.headers.get("Origin", "")
+    if origin in ("http://127.0.0.1:5199", "null", "") or origin.startswith("file://"):
+        r.headers["Access-Control-Allow-Origin"] = origin if origin else "http://127.0.0.1:5199"
+    else:
+        r.headers["Access-Control-Allow-Origin"] = "http://127.0.0.1:5199"
     r.headers["Access-Control-Allow-Headers"] = "Content-Type"
     r.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return r

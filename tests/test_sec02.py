@@ -72,3 +72,41 @@ def test_unsupported_extension_rejected(client):
     resp = _post_file(client, b'any content', 'program.exe')
     assert resp.status_code == 400, \
         f"Expected 400 for .exe extension, got {resp.status_code}"
+
+
+def test_png_file_rejected(client):
+    """PNG file (magic bytes 0x89 PNG) must be rejected with 400."""
+    import json as _json
+    # Real PNG magic bytes
+    png_bytes = b'\x89PNG\r\n\x1a\n' + b'\x00' * 504
+    resp = _post_file(client, png_bytes, 'photo.png')
+    assert resp.status_code == 400, \
+        f"Expected 400 for .png upload, got {resp.status_code}"
+    body = _json.loads(resp.data)
+    assert "Unsupported file type" in body.get("error", ""), \
+        f"Expected 'Unsupported file type' error for .png, got: {body}"
+
+
+def test_zip_file_rejected(client):
+    """ZIP file (PK magic bytes) with .zip extension must be rejected with 400."""
+    import json as _json
+    # ZIP magic bytes — same as DOCX but with .zip extension
+    zip_bytes = b'PK\x03\x04' + b'\x00' * 508
+    resp = _post_file(client, zip_bytes, 'archive.zip')
+    assert resp.status_code == 400, \
+        f"Expected 400 for .zip upload, got {resp.status_code}"
+    body = _json.loads(resp.data)
+    assert "Unsupported file type" in body.get("error", ""), \
+        f"Expected 'Unsupported file type' error for .zip, got: {body}"
+
+
+def test_png_renamed_to_pdf_rejected(client):
+    """PNG bytes renamed to .pdf must fail magic byte check and return 400."""
+    import json as _json
+    png_bytes = b'\x89PNG\r\n\x1a\n' + b'\x00' * 504
+    resp = _post_file(client, png_bytes, 'renamed.pdf')
+    assert resp.status_code == 400, \
+        f"Expected 400 for PNG-bytes uploaded as .pdf, got {resp.status_code}"
+    body = _json.loads(resp.data)
+    assert "Unsupported file type" in body.get("error", ""), \
+        f"Expected 'Unsupported file type' for PNG-as-PDF, got: {body}"
