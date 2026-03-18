@@ -7,19 +7,19 @@
 
 ### Security
 
-- [ ] **SEC-01**: API key never transmitted from frontend; backend reads from encrypted storage only
-- [ ] **SEC-02**: Uploaded files validated against MIME type and magic bytes before parsing
-- [ ] **SEC-03**: Max upload file size enforced server-side (50MB limit)
-- [ ] **SEC-04**: Temp files guaranteed to be cleaned up on crash, exception, and app shutdown
-- [ ] **SEC-05**: User sees a visible warning when API key encryption is unavailable (safeStorage fallback)
+- [x] **SEC-01**: API key never transmitted from frontend; backend reads from encrypted storage only
+- [x] **SEC-02**: Uploaded files validated against MIME type and magic bytes before parsing
+- [x] **SEC-03**: Max upload file size enforced server-side (50MB limit)
+- [x] **SEC-04**: Temp files guaranteed to be cleaned up on crash, exception, and app shutdown
+- [x] **SEC-05**: User sees a visible warning when API key encryption is unavailable (safeStorage fallback)
 
 ### Code Architecture
 
 - [x] **ARCH-01**: JavaScript extracted from index.html into separate .js modules (one per wizard step)
 - [x] **ARCH-02**: Shared utilities (API calls, formatting helpers) in a dedicated module
 - [x] **ARCH-03**: No inline event handlers — all JS wired via addEventListener in modules
-- [ ] **ARCH-04**: Python server.py routes separated from extraction/generation logic (thin controllers)
-- [ ] **ARCH-05**: Constants (port, max sizes, field names) defined once, imported where needed
+- [x] **ARCH-04**: Python server.py routes separated from extraction/generation logic (thin controllers)
+- [x] **ARCH-05**: Constants (port, max sizes, field names) defined once, imported where needed
 
 ### UI/UX Design System
 
@@ -92,11 +92,11 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 1 | Pending |
-| SEC-02 | Phase 1 | Pending |
-| SEC-03 | Phase 1 | Pending |
-| SEC-04 | Phase 1 | Pending |
-| SEC-05 | Phase 1 | Pending |
+| SEC-01 | Phase 1 | Complete |
+| SEC-02 | Phase 1 | Complete |
+| SEC-03 | Phase 1 | Complete |
+| SEC-04 | Phase 1 | Complete |
+| SEC-05 | Phase 1 | Complete |
 | ARCH-01 | Phase 2 | Complete |
 | ARCH-02 | Phase 2 | Complete |
 | ARCH-03 | Phase 2 | Complete |
@@ -137,4 +137,4 @@
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-17 — traceability updated after roadmap creation (9 phases)*
+*Last updated: 2026-03-18 — SEC-01 through SEC-05 marked complete after Phase 1 retroactive tracking fix*

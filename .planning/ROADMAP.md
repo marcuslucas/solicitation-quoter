@@ -6,9 +6,9 @@ This roadmap elevates an existing, working Electron + Python desktop app to prod
 
 ## Phases
 
-- [ ] **Phase 1: Security Hardening** - Eliminate API key exposure, validate uploads, guarantee temp file cleanup, and surface encryption warnings
+- [x] **Phase 1: Security Hardening** - Eliminate API key exposure, validate uploads, guarantee temp file cleanup, and surface encryption warnings (completed 2026-03-18)
 - [x] **Phase 2: Frontend Modularization** - Break the 2100-line index.html into per-step JS modules with no inline event handlers (completed 2026-03-18)
-- [ ] **Phase 3: Backend Structure** - Separate Flask route controllers from extraction/generation logic; centralize constants
+- [x] **Phase 3: Backend Structure** - Separate Flask route controllers from extraction/generation logic; centralize constants (completed 2026-03-18 via quick task 1)
 - [ ] **Phase 4: CSS Design Tokens** - Establish color, spacing, and typography token system with consistent application throughout
 - [ ] **Phase 5: Interactive States & Theming** - Consistent hover/focus/active states, button variants, and scoped theme tokens
 - [ ] **Phase 6: Error States** - Actionable error messages for parse failures, quote generation, SAM.gov lookups, startup, and form validation
@@ -27,13 +27,14 @@ This roadmap elevates an existing, working Electron + Python desktop app to prod
   2. Uploading a renamed `.exe` or oversized file produces a specific rejection error, not a crash
   3. Killing the backend process mid-parse leaves no orphaned temp files on disk after app restarts
   4. On a system where safeStorage encryption is unavailable, a visible warning appears before the key can be saved
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — pytest test scaffold (RED tests for SEC-01 through SEC-04)
-- [ ] 01-02-PLAN.md — Python backend: remove api_key from form, magic byte validation, 50MB limit, temp file tracking
-- [ ] 01-03-PLAN.md — Electron main: env-inject API key at spawn, remove plaintext fallback, backend restart on key change
-- [ ] 01-04-PLAN.md — Renderer: remove api_key from /parse, encryption warning banner, reconnect UX + human verification
+- [x] 01-01-PLAN.md — pytest test scaffold (RED tests for SEC-01 through SEC-04)
+- [x] 01-02-PLAN.md — Python backend: remove api_key from form, magic byte validation, 50MB limit, temp file tracking
+- [x] 01-03-PLAN.md — Electron main: env-inject API key at spawn, remove plaintext fallback, backend restart on key change
+- [x] 01-04-PLAN.md — Renderer: remove api_key from /parse, encryption warning banner, reconnect UX + human verification
+- [x] 01-05-PLAN.md — API key IPC contract fix: blocked path, restart-backend IPC, preload exposure
 
 ### Phase 2: Frontend Modularization
 **Goal**: The JavaScript in index.html is replaced by separate per-step modules loaded as script files, with all event wiring done via addEventListener — no inline handlers
@@ -61,7 +62,10 @@ Plans:
   1. `python/server.py` route functions contain no extraction regex or document-generation code — they delegate to imported modules
   2. Port number, max file size, and field name constants appear in exactly one source file and are imported everywhere else
   3. Running the app after the refactor produces identical extraction and quote output to pre-refactor (no behavioral regression)
-**Plans**: TBD
+**Plans**: 1 plan (delivered as quick task 1)
+
+Plans:
+- [x] quick-1 — Extract constants.py, extractor.py, generator.py; rewrite server.py as thin controllers (completed 2026-03-18)
 
 ### Phase 4: CSS Design Tokens
 **Goal**: All colors, spacing values, and type sizes in the stylesheet are defined as CSS custom properties — no hardcoded pixel values or color literals scattered through the CSS
@@ -137,7 +141,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Security Hardening | 0/TBD | Not started | - |
+| 1. Security Hardening | 5/5 | Complete | 2026-03-18 |
 | 2. Frontend Modularization | 5/5 | Complete   | 2026-03-18 |
 | 3. Backend Structure | 0/TBD | Not started | - |
 | 4. CSS Design Tokens | 0/TBD | Not started | - |
