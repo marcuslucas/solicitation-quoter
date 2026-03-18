@@ -5,7 +5,7 @@ milestone_name: milestone
 status: planning
 stopped_at: Completed quick-1 PLAN.md — Python server.py refactored into thin Flask controllers
 last_updated: "2026-03-18T21:33:29.955Z"
-last_activity: 2026-03-18 — Phase 2 complete, UAT passed, Phase 1 tracking retroactively fixed
+last_activity: 2026-03-18 - Completed quick task 1: Refactor python/server.py into thin Flask controllers
 progress:
   total_phases: 9
   completed_phases: 2
@@ -84,6 +84,12 @@ None yet.
 
 - Phase 2 (Frontend Modularization): Electron loads local HTML files; confirm module loading works with `file://` protocol before committing to ES module split
 - Phase 8 (Data Quality): Scope truncation occurs at 3 separate points in the stack; fix must address all three or truncation will silently re-occur
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 1 | Refactor python/server.py into thin Flask controllers. Extract all regex/extraction logic into python/extractor.py, all docx generation into python/generator.py, all constants (port, file size limits, field names) into python/constants.py. server.py routes import and delegate — no logic inline. Zero behavioral regression: /parse and /generate_quote return identical output. Reference .planning/phases/02-*/SUMMARY.md for project conventions. | 2026-03-18 | 953343a | [1-refactor-python-server-py-into-thin-flas](./quick/1-refactor-python-server-py-into-thin-flas/) |
 
 ## Session Continuity
 
