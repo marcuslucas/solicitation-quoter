@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in-progress
-stopped_at: "Completed 02-frontend-modularization/02-01-PLAN.md"
-last_updated: "2026-03-18T20:29:50Z"
-last_activity: 2026-03-18 — Phase 2 Plan 1 complete — test scaffold + state.js/utils.js/theme.js extracted
+status: executing
+stopped_at: Completed 02-frontend-modularization/02-02-PLAN.md
+last_updated: "2026-03-18T20:36:08.382Z"
+last_activity: 2026-03-18 — Plan 02-01 complete — test scaffold + state.js/utils.js/theme.js extracted
 progress:
   total_phases: 9
   completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 10
+  completed_plans: 7
   percent: 10
 ---
 
@@ -50,6 +50,7 @@ Progress: [█░░░░░░░░░] 10%
 - Trend: baseline
 
 *Updated after each plan completion*
+| Phase 02-frontend-modularization P02 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,8 @@ Recent decisions affecting current work:
 - [Pre-roadmap]: Add extraction confidence scoring — user needs signal when regex quality is low
 - [02-01]: window globals pattern (window.X) chosen over ES modules — nodeIntegration:false means require() is undefined in Electron renderer
 - [02-01]: render() in utils.js uses window.step1-4 lookup at call-time to avoid circular dependency with step modules
+- [Phase 02-02]: data-field attribute pattern used for step2 field inputs — avoids N individual getElementById calls, consistent with step module conventions
+- [Phase 02-02]: Whole-app drag-and-drop IIFE moved into step1.js — it is step1-specific (guards on window.S.step === 1)
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T20:29:50Z
-Stopped at: Completed 02-frontend-modularization/02-01-PLAN.md
-Resume file: .planning/phases/02-frontend-modularization/02-01-SUMMARY.md
+Last session: 2026-03-18T20:36:08.375Z
+Stopped at: Completed 02-frontend-modularization/02-02-PLAN.md
+Resume file: None

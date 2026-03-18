@@ -17,7 +17,7 @@
 
 - [x] **ARCH-01**: JavaScript extracted from index.html into separate .js modules (one per wizard step)
 - [x] **ARCH-02**: Shared utilities (API calls, formatting helpers) in a dedicated module
-- [ ] **ARCH-03**: No inline event handlers — all JS wired via addEventListener in modules
+- [x] **ARCH-03**: No inline event handlers — all JS wired via addEventListener in modules
 - [ ] **ARCH-04**: Python server.py routes separated from extraction/generation logic (thin controllers)
 - [ ] **ARCH-05**: Constants (port, max sizes, field names) defined once, imported where needed
 
@@ -99,7 +99,7 @@
 | SEC-05 | Phase 1 | Pending |
 | ARCH-01 | Phase 2 | Complete |
 | ARCH-02 | Phase 2 | Complete |
-| ARCH-03 | Phase 2 | Pending |
+| ARCH-03 | Phase 2 | Complete |
 | ARCH-04 | Phase 3 | Pending |
 | ARCH-05 | Phase 3 | Pending |
 | UI-01 | Phase 4 | Pending |
