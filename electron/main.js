@@ -37,7 +37,7 @@ function isOnScreen(bounds) {
 }
 
 // ── BACKEND ───────────────────────────────────────────────────────────────────
-function startBackend() {
+function startBackend(apiKey) {
   const isPackaged = app.isPackaged
   let cmd, args
 
@@ -57,7 +57,7 @@ function startBackend() {
   }
 
   backend = spawn(cmd, args, {
-    env: { ...process.env, PORT: String(PORT), PYTHONUNBUFFERED: '1' },
+    env: { ...process.env, PORT: String(PORT), PYTHONUNBUFFERED: '1', ...(apiKey ? { ANTHROPIC_API_KEY: apiKey } : {}) },
     stdio: ['ignore','pipe','pipe'],
     windowsHide: true
   })
@@ -241,8 +241,7 @@ function keyPath() {
 
 ipcMain.handle('store-api-key', (_, key) => {
   if (!safeStorage.isEncryptionAvailable()) {
-    fs.writeFileSync(keyPath() + '.plain', key, 'utf8')
-    return { encrypted: false }
+    return { blocked: true }
   }
   fs.writeFileSync(keyPath(), safeStorage.encryptString(key))
   return { encrypted: true }
@@ -261,6 +260,22 @@ ipcMain.handle('load-api-key', () => {
 ipcMain.handle('clear-api-key', () => {
   if (fs.existsSync(keyPath())) fs.unlinkSync(keyPath())
   if (fs.existsSync(keyPath() + '.plain')) fs.unlinkSync(keyPath() + '.plain')
+})
+
+ipcMain.handle('restart-backend', async () => {
+  try {
+    kill()
+    // Read the stored encrypted key and inject into backend env
+    let apiKey = ''
+    if (safeStorage.isEncryptionAvailable() && fs.existsSync(keyPath())) {
+      try { apiKey = safeStorage.decryptString(fs.readFileSync(keyPath())) } catch (_) {}
+    }
+    startBackend(apiKey)
+    await waitForBackend()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e.message }
+  }
 })
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────────────────
