@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-frontend-modularization/02-02-PLAN.md
-last_updated: "2026-03-18T20:36:08.382Z"
+stopped_at: Completed 02-frontend-modularization/02-03-PLAN.md
+last_updated: "2026-03-18T20:41:28.724Z"
 last_activity: 2026-03-18 — Plan 02-01 complete — test scaffold + state.js/utils.js/theme.js extracted
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 10
 ---
 
@@ -51,6 +51,7 @@ Progress: [█░░░░░░░░░] 10%
 
 *Updated after each plan completion*
 | Phase 02-frontend-modularization P02 | 5 | 2 tasks | 2 files |
+| Phase 02-frontend-modularization P03 | 8 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Recent decisions affecting current work:
 - [02-01]: render() in utils.js uses window.step1-4 lookup at call-time to avoid circular dependency with step modules
 - [Phase 02-02]: data-field attribute pattern used for step2 field inputs — avoids N individual getElementById calls, consistent with step module conventions
 - [Phase 02-02]: Whole-app drag-and-drop IIFE moved into step1.js — it is step1-specific (guards on window.S.step === 1)
+- [Phase 02-frontend-modularization]: Event delegation on #li-tbody — single change+click listener replaces per-row inline handlers; stable against re-renders
+- [Phase 02-frontend-modularization]: data-vendor-field attribute delegation on #vendor-form — consistent with data-field pattern from step2
 
 ### Pending Todos
 
@@ -78,6 +81,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-18T20:36:08.375Z
-Stopped at: Completed 02-frontend-modularization/02-02-PLAN.md
+Last session: 2026-03-18T20:41:28.717Z
+Stopped at: Completed 02-frontend-modularization/02-03-PLAN.md
 Resume file: None
