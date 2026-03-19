@@ -46,6 +46,22 @@
   --font: Calibri, 'Calibri', sans-serif;
   --scanline-opacity: 0.07;
 }
+[data-theme="light"] :root {
+  --color-primary: #1a73e8;
+  --color-secondary: #4285f4;
+  --color-background: #f8f9fa;
+  --color-surface: #ffffff;
+  --color-surface-raised: #f1f3f4;
+  --color-panel: #ffffff;
+  --color-header: #f1f3f4;
+  --color-header-raised: #e8eaed;
+  --color-text: #202124;
+  --color-text-muted: #5f6368;
+  --color-border: #dadce0;
+  --color-error: #d93025;
+  --color-success: #188038;
+  --color-warning: #f9ab00;
+}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;display:flex;flex-direction:column}
 body{font-family:var(--font);background:var(--color-background);color:var(--color-text);font-size:var(--text-md);line-height:1.5}
@@ -480,6 +496,7 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
       </div>
     </nav>
     <div class="sidebar-footer">
+      <div class="settings-btn" data-action="toggle-light" tabindex="0">Light Mode</div>
       <div class="settings-btn" data-action="themes" tabindex="0">Themes</div>
       <div class="settings-btn" data-action="settings" tabindex="0">Settings</div>
     </div>

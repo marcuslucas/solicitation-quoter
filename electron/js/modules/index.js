@@ -358,6 +358,28 @@ function wireStaticHandlers() {
   })
 
   // Sidebar buttons — distinguished by data-action attribute
+  document.querySelector('.settings-btn[data-action="toggle-light"]')
+    ?.addEventListener('click', () => {
+      const html = document.documentElement
+      if (html.getAttribute('data-theme') === 'light') {
+        const prev = localStorage.getItem('sq-theme') || 'specter'
+        html.setAttribute('data-theme', prev)
+      } else {
+        html.setAttribute('data-theme', 'light')
+      }
+    })
+  document.querySelector('.settings-btn[data-action="toggle-light"]')
+    ?.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const html = document.documentElement
+        if (html.getAttribute('data-theme') === 'light') {
+          const prev = localStorage.getItem('sq-theme') || 'specter'
+          html.setAttribute('data-theme', prev)
+        } else {
+          html.setAttribute('data-theme', 'light')
+        }
+      }
+    })
   document.querySelector('.settings-btn[data-action="themes"]')
     ?.addEventListener('click', window.openThemes)
   document.querySelector('.settings-btn[data-action="themes"]')
