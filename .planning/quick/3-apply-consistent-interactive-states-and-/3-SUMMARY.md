@@ -121,3 +121,43 @@ The `[data-theme="light"] :root` CSS selector was specified directly in the plan
 - Commit 824259d (Task 1): FOUND
 - Commit 251b196 (Task 2): FOUND
 - Commit 5148182 (Bug fix — light mode CSS selector): FOUND
+
+---
+
+## Post-Verification Bug Fix: Theme Leak (aa202f4)
+
+**Reported:** After the light mode fix, switching to a dark named theme (e.g. Phantom, Specter) via the Themes modal left the sidebar and file drop window with white/light backgrounds.
+
+### Root Cause Analysis
+
+Two interacting bugs caused the theme leak:
+
+**Bug A — `applyTheme()` set `data-theme` on `<body>` instead of `<html>`**
+
+`applyTheme()` called `document.body.dataset.theme = id`. The light mode toggle set it on `document.documentElement` (`<html>`). These are different elements. After `initTheme()` ran `applyTheme('prism')`, `<body data-theme="prism">` was set. If the user then activated light mode, `<html data-theme="light">` was set. When they selected a dark theme from the modal, `applyTheme('phantom')` set `<body data-theme="phantom">` — but `<body data-theme="prism">` was overwritten correctly. However, the cascade of CSS rules meant both `[data-theme="prism"] .sidebar` (matching the old `<body>` tag still from `applyTheme` during init) and `[data-theme="phantom"] ...` could both match if the two elements diverged.
+
+**Bug B — Light mode toggle did not clear inline CSS vars**
+
+`applyTheme()` sets CSS vars inline on `<html>` via `root.style.setProperty()`. Inline styles have higher specificity than any stylesheet rule, including `:root[data-theme="light"] { --color-primary: ... }`. So after `applyTheme('prism')` ran during `initTheme()`, activating light mode only set the attribute — the `:root[data-theme="light"]` token block could never override the inline vars. Light mode appeared visually to work only because prism's colors (white/light) are similar to the light token values.
+
+The critical failure path:
+1. App loads → `initTheme()` → `applyTheme('prism')` → inline vars set to prism (white) on `<html>`, `<body data-theme="prism">` set
+2. User activates Light Mode → `<html data-theme="light">` set; `<body>` still has `data-theme="prism"` — `[data-theme="prism"] .sidebar { background:#FFFFFF }` still matches and wins
+3. User picks dark theme (Phantom) from modal → `applyTheme('phantom')` → inline vars now dark (correct), but `<body data-theme="phantom">` replaces prism. `<html>` still has `data-theme="light"`. Both `[data-theme="light"] ...` (none for elements) and `[data-theme="prism"]` no longer match. This step actually works. But if the light toggle was never activated and the user just goes prism → dark theme, the `[data-theme="prism"] .sidebar { background:#FFFFFF }` on `<body>` would remain matched until `applyTheme()` overwrites `body.dataset.theme`.
+
+The race was: stale `data-theme` on `<body>` from a previous `applyTheme()` call lingered and competed with new `data-theme` set on `<html>` by the light toggle.
+
+### Fix
+
+**`electron/js/modules/shared/theme.js` — `applyTheme()`:**
+- Changed `document.body.dataset.theme = id` to `root.dataset.theme = id` (sets on `<html>`)
+- Added `delete document.body.dataset.theme` to clear any previously set value on `<body>`
+- Single source of truth: `data-theme` is always on `<html>` only
+
+**`electron/js/modules/index.js` — `wireStaticHandlers()` light toggle:**
+- Extracted toggle into `toggleLightMode()` function to reduce duplication
+- When turning OFF light mode: calls `window.applyTheme(prev)` instead of just `html.setAttribute(...)` — this re-applies inline CSS vars AND sets `data-theme` on `<html>` correctly
+- When turning ON light mode: calls `html.removeAttribute('style')` first, clearing all inline CSS vars set by `applyTheme()`, so the `:root[data-theme="light"]` stylesheet block can take effect unimpeded; then clears `body.dataset.theme` and sets `html.setAttribute('data-theme', 'light')`
+
+**Commit:** `aa202f4`
+**Files:** `electron/js/modules/shared/theme.js`, `electron/js/modules/index.js`
