@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed quick-3 post-verification fix — theme leak resolved; applyTheme now sets data-theme on <html> only (aa202f4)
+stopped_at: Completed quick-3 cleanup — light mode toggle removed; named themes via Themes modal only (a4d9cb6)
 last_updated: "2026-03-18T22:30:00.000Z"
 last_activity: 2026-03-18 - Fixed theme leak bug: dark themes no longer leak white sidebar/dropzone from stale prism data-theme on body
 progress:
@@ -76,10 +76,9 @@ Recent decisions affecting current work:
 - [Phase 02-frontend-modularization]: data-action attributes on sidebar buttons for no-inline-handler targeting in wireStaticHandlers()
 - [Phase 02-frontend-modularization]: Human UAT required before marking ARCH-01/02/03 complete — runtime event delegation cannot be fully verified by static analysis alone
 - [quick-3]: :focus-visible used exclusively over :focus for keyboard navigation rings — matches browser focus-visible heuristic, avoids mouse-click outline noise
-- [quick-3]: :root[data-theme="light"] (NOT [data-theme="light"] :root) — correct attribute selector on :root directly; descendant combinator variant is structurally impossible since :root has no ancestors
-- [quick-3]: toggle-light restores sq-theme localStorage key so named theme survives light mode toggle round-trip
+- [quick-3]: :focus-visible used exclusively over :focus for keyboard navigation rings — matches browser focus-visible heuristic, avoids mouse-click outline noise
 - [quick-3]: applyTheme() sets data-theme on documentElement only (not body) — single source of truth for CSS attribute selectors; stale body data-theme caused white sidebar/dropzone leak in dark themes
-- [quick-3]: light toggle clears html inline style attribute before activating light mode — required because applyTheme inline vars have higher specificity than :root[data-theme="light"] stylesheet block
+- [quick-3]: Light mode toggle button and :root[data-theme="light"] CSS block removed — all theme switching via Themes modal; eliminates duplicate code paths and potential specificity conflicts with inline vars
 
 ### Pending Todos
 
@@ -96,7 +95,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 1 | Refactor python/server.py into thin Flask controllers. Extract all regex/extraction logic into python/extractor.py, all docx generation into python/generator.py, all constants (port, file size limits, field names) into python/constants.py. server.py routes import and delegate — no logic inline. Zero behavioral regression: /parse and /generate_quote return identical output. Reference .planning/phases/02-*/SUMMARY.md for project conventions. | 2026-03-18 | 953343a | [1-refactor-python-server-py-into-thin-flas](./quick/1-refactor-python-server-py-into-thin-flas/) |
 | 2 | Establish CSS custom property token system. Define canonical :root block with 20+ named tokens (color palette, spacing scale, typography scale, border radius). Replace all hardcoded terse aliases (--gold, --bg, --red, etc.) throughout CSS and JS inline styles with semantic --color-*/--space-*/--text-*/--radius-* names. Update theme.js THEMES vars keys to match. | 2026-03-18 | 8aa7c8f | [2-establish-a-css-custom-property-token-sy](./quick/2-establish-a-css-custom-property-token-sy/) |
-| 3 | Apply consistent interactive states and theming. Add :focus-visible focus rings and :active pressed states to all interactive elements using token variables. Add [data-theme="light"] :root block overriding all 14 color tokens. Add Light Mode sidebar toggle button with handler. Fixed theme leak: applyTheme now sets data-theme on documentElement; light toggle clears inline style vars. | 2026-03-18 | aa202f4 | [3-apply-consistent-interactive-states-and-](./quick/3-apply-consistent-interactive-states-and-/) |
+| 3 | Apply consistent interactive states and theming. :focus-visible focus rings and :active pressed states on all interactive elements. Light mode toggle button and :root[data-theme="light"] CSS block removed — theme switching exclusively via Themes modal. applyTheme sets data-theme on documentElement only. | 2026-03-18 | a4d9cb6 | [3-apply-consistent-interactive-states-and-](./quick/3-apply-consistent-interactive-states-and-/) |
 
 ## Session Continuity
 

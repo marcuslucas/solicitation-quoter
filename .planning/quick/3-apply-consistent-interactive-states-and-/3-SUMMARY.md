@@ -12,8 +12,7 @@ provides:
   - :focus-visible focus rings on all interactive elements using --color-primary token
   - :active pressed states on all button variants using token variables only
   - .btn-secondary alias class (same rules as .btn-ghost)
-  - [data-theme="light"] :root block overriding all 14 color tokens to neutral light palette
-  - Light Mode toggle button in sidebar-footer
+  - [data-theme="light"] :root block removed (superseded by named themes via Themes modal)
 affects: [ui, theming, accessibility]
 
 # Tech tracking
@@ -21,8 +20,7 @@ tech-stack:
   added: []
   patterns:
     - ":focus-visible used exclusively over :focus for keyboard navigation visibility"
-    - "[data-theme] :root { } pattern for full-token theme override without element-level rules"
-    - "data-action attribute delegation pattern extended to toggle-light sidebar button"
+    - "Named themes applied exclusively via Themes modal — no light mode toggle button"
 
 key-files:
   created: []
@@ -33,8 +31,7 @@ key-files:
 key-decisions:
   - "sd-trigger is a native <button> element — natively focusable, no tabindex needed"
   - "theme-card elements are created dynamically by theme.js renderThemeCard() — :focus-visible CSS rule covers them without tabindex change since they use onclick (non-keyboard navigable by design)"
-  - "[data-theme='light'] :root block added immediately after base :root block — token cascade handles full light theme with zero element-level overrides"
-  - "toggle-light stores/restores sq-theme from localStorage so named theme selections survive light mode toggle"
+  - ":root[data-theme='light'] CSS block and Light Mode sidebar button removed — theme switching exclusively via Themes modal"
 
 patterns-established:
   - "Interactive state rule pattern: :hover then :focus-visible then :active, all using var(--color-*) tokens only"
@@ -48,7 +45,7 @@ completed: 2026-03-18
 
 # Quick Task 3: Interactive States and Light Theming Summary
 
-**:focus-visible rings on every interactive class, token-only :active states on all button variants, and a complete [data-theme="light"] :root token block with sidebar toggle**
+**:focus-visible rings on every interactive class, token-only :active states on all button variants; light mode toggle button and CSS block removed — named themes only via Themes modal**
 
 ## Performance
 
@@ -61,8 +58,7 @@ completed: 2026-03-18
 ## Accomplishments
 - All interactive element classes (`.btn`, `.nav-item`, `.settings-btn`, `.sd-trigger`, `.theme-card`, `input`/`textarea`/`select`) now have explicit `:focus-visible` rules producing a 2px primary-color outline
 - All button variants (`.btn-primary`, `.btn-ghost`, `.btn-danger`, `.btn-success`) have `:active` pressed states using only `var(--color-*)` tokens; `.btn-secondary` alias added
-- `[data-theme="light"] :root` block overrides all 14 color tokens to a neutral light palette — no element-level overrides needed for light mode to work
-- "Light Mode" toggle button added to sidebar footer with click and keyboard handler
+- `:root[data-theme="light"]` CSS block and "Light Mode" sidebar button removed — theme switching is exclusively via the Themes modal to prevent duplicate/conflicting code paths
 
 ## Task Commits
 
@@ -71,18 +67,20 @@ Each task was committed atomically:
 1. **Task 1: Add focus rings and active states to all interactive elements** - `824259d` (feat)
 2. **Task 2: Add [data-theme="light"] :root token override block** - `251b196` (feat)
 3. **Bug fix: Correct light-mode CSS selector** - `5148182` (fix)
+4. **Remove light mode toggle — named themes via Themes modal only** - `a4d9cb6` (refactor)
 
 **Plan metadata:** (final docs commit — see self-check below)
 
 ## Files Created/Modified
-- `electron/index.html` - Added 20 CSS rules: `.btn-secondary` alias, `:focus-visible` on 6 element classes, `:active` on 7 selectors; added `[data-theme="light"] :root` block with 14 token overrides; added Light Mode `settings-btn` in sidebar-footer
-- `electron/js/modules/index.js` - Added `toggle-light` click+keydown handler in `wireStaticHandlers()` toggling `data-theme="light"` on `document.documentElement` with localStorage restore
+- `electron/index.html` - Added 20 CSS rules: `.btn-secondary` alias, `:focus-visible` on 6 element classes, `:active` on 7 selectors; removed `:root[data-theme="light"]` block and Light Mode `settings-btn` in sidebar-footer
+- `electron/js/modules/index.js` - Removed `toggle-light` click+keydown handler and `toggleLightMode()` function from `wireStaticHandlers()`
+- `electron/js/modules/shared/theme.js` - `applyTheme()` already sets `data-theme` on `<html>` only (correct — unchanged)
 
 ## Decisions Made
 - `sd-trigger` is a native `<button>` — natively focusable, no tabindex attribute needed
 - `theme-card` elements rendered dynamically via `renderThemeCard()` in theme.js use `onclick` attributes; `:focus-visible` CSS rule covers keyboard focus correctly without modifying theme.js
 - `[data-theme="light"] :root` block placed immediately after base `:root` — CSS specificity of `[attr]` selector overrides plain `:root` for token cascade
-- Toggle restores `sq-theme` localStorage key (set by `applyTheme()`) so switching back from light mode returns to the user's last-selected named theme
+- Light mode toggle and `:root[data-theme="light"]` block removed; `applyTheme()` on `<html>` is the single theme path with no side-channel toggle
 
 ## Deviations from Plan
 
@@ -161,3 +159,20 @@ The race was: stale `data-theme` on `<body>` from a previous `applyTheme()` call
 
 **Commit:** `aa202f4`
 **Files:** `electron/js/modules/shared/theme.js`, `electron/js/modules/index.js`
+
+---
+
+## Post-Fix Cleanup: Light Mode Toggle Removed (a4d9cb6)
+
+**Requested:** Remove light mode toggle entirely — named themes via Themes modal are sufficient and cleaner.
+
+### Changes
+
+- `electron/index.html`: Removed `:root[data-theme="light"] { }` CSS block (14 token overrides)
+- `electron/index.html`: Removed `<div class="settings-btn" data-action="toggle-light">Light Mode</div>` from sidebar footer
+- `electron/js/modules/index.js`: Removed `toggleLightMode()` function and both event listeners (`click` + `keydown`) for `data-action="toggle-light"`
+- `electron/js/modules/shared/theme.js`: No change needed — `applyTheme()` already correctly sets `data-theme` on `<html>` and clears `<body>`
+
+**Result:** Zero white element leaks possible. Named themes applied exclusively via Themes modal. Single code path for all theme changes.
+
+**Commit:** `a4d9cb6`
