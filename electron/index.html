@@ -102,6 +102,26 @@ input::placeholder,textarea::placeholder{color:var(--color-text-muted);opacity:.
 .btn:disabled{opacity:.3;cursor:not-allowed;pointer-events:none}
 .btn-sm{padding:5px 10px;font-size:var(--text-sm)}.btn-lg{padding:var(--space-md) var(--space-xl);font-size:var(--text-md)}
 .btn-row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+/* Secondary button alias (same as ghost) */
+.btn-secondary{background:transparent;color:var(--color-text-muted);border:1px solid var(--color-border)}
+.btn-secondary:hover{color:var(--color-text);background:var(--color-surface-raised);border-color:var(--color-text)}
+.btn-secondary:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.btn-secondary:active{background:var(--color-surface-raised);color:var(--color-text)}
+/* Focus rings — keyboard navigation */
+.btn:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.nav-item:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.settings-btn:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.sd-trigger:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.theme-card:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--color-primary);outline-offset:1px}
+/* Active (pressed) states */
+.btn-primary:active{background:var(--color-primary);opacity:.8}
+.btn-ghost:active{background:var(--color-surface-raised);color:var(--color-text)}
+.btn-danger:active{background:rgba(255,68,68,.18);color:var(--color-error)}
+.btn-success:active{opacity:.85}
+.nav-item:active{background:var(--color-surface-raised)}
+.settings-btn:active{background:var(--color-surface-raised);color:var(--color-text)}
+.sd-trigger:active{color:var(--color-text);border-color:var(--color-text)}
 /* Speed dial */
 .speed-dial{display:flex;align-items:center;margin-bottom:var(--space-xs)}
 .sd-trigger{width:30px;height:30px;border-radius:50%;background:var(--color-surface-raised);border:1px solid var(--color-border);color:var(--color-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .35s cubic-bezier(.34,1.56,.64,1),color .15s,background .15s,border-color .15s;flex-shrink:0;padding:0;transform-origin:15px 15px}
