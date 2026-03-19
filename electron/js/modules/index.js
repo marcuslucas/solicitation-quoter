@@ -358,27 +358,27 @@ function wireStaticHandlers() {
   })
 
   // Sidebar buttons — distinguished by data-action attribute
+  function toggleLightMode() {
+    const html = document.documentElement
+    if (html.getAttribute('data-theme') === 'light') {
+      // Restore the previously saved named theme — re-apply fully so inline
+      // CSS vars are set and data-theme is on <html> (not body).
+      const prev = localStorage.getItem('sq-theme') || 'specter'
+      window.applyTheme(prev)
+    } else {
+      // Switching to light mode: clear all inline CSS var overrides that
+      // applyTheme() set on <html> so the :root[data-theme="light"] stylesheet
+      // block can take effect, then set the attribute.
+      html.removeAttribute('style')
+      delete document.body.dataset.theme
+      html.setAttribute('data-theme', 'light')
+    }
+  }
   document.querySelector('.settings-btn[data-action="toggle-light"]')
-    ?.addEventListener('click', () => {
-      const html = document.documentElement
-      if (html.getAttribute('data-theme') === 'light') {
-        const prev = localStorage.getItem('sq-theme') || 'specter'
-        html.setAttribute('data-theme', prev)
-      } else {
-        html.setAttribute('data-theme', 'light')
-      }
-    })
+    ?.addEventListener('click', toggleLightMode)
   document.querySelector('.settings-btn[data-action="toggle-light"]')
     ?.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        const html = document.documentElement
-        if (html.getAttribute('data-theme') === 'light') {
-          const prev = localStorage.getItem('sq-theme') || 'specter'
-          html.setAttribute('data-theme', prev)
-        } else {
-          html.setAttribute('data-theme', 'light')
-        }
-      }
+      if (e.key === 'Enter' || e.key === ' ') toggleLightMode()
     })
   document.querySelector('.settings-btn[data-action="themes"]')
     ?.addEventListener('click', window.openThemes)

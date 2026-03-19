@@ -133,7 +133,11 @@ function applyTheme(id) {
   if (!theme) return
   const root = document.documentElement
   Object.entries(theme.vars).forEach(([k,v]) => root.style.setProperty(k, v))
-  document.body.dataset.theme = id
+  // Set data-theme on <html> (not <body>) so CSS attribute selectors
+  // like [data-theme="prism"] work via a single source of truth.
+  // Also clear it from <body> in case it was set there previously.
+  root.dataset.theme = id
+  delete document.body.dataset.theme
   localStorage.setItem('sq-theme', id)
   document.querySelectorAll('.theme-card').forEach(c =>
     c.classList.toggle('active', c.dataset.theme === id))
