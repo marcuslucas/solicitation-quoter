@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed quick-3 PLAN.md — focus rings, active states, light theme token block added
+stopped_at: Completed quick-3 — focus rings, active states, light theme; fixed light-mode CSS selector bug (5148182)
 last_updated: "2026-03-18T22:08:00.000Z"
 last_activity: 2026-03-18 - Completed quick task 3: Apply consistent interactive states and theming
 progress:
@@ -76,7 +76,7 @@ Recent decisions affecting current work:
 - [Phase 02-frontend-modularization]: data-action attributes on sidebar buttons for no-inline-handler targeting in wireStaticHandlers()
 - [Phase 02-frontend-modularization]: Human UAT required before marking ARCH-01/02/03 complete — runtime event delegation cannot be fully verified by static analysis alone
 - [quick-3]: :focus-visible used exclusively over :focus for keyboard navigation rings — matches browser focus-visible heuristic, avoids mouse-click outline noise
-- [quick-3]: [data-theme="light"] :root block uses CSS attribute+descendant selector to override base :root tokens — zero element-level overrides needed for full light theme
+- [quick-3]: :root[data-theme="light"] (NOT [data-theme="light"] :root) — correct attribute selector on :root directly; descendant combinator variant is structurally impossible since :root has no ancestors
 - [quick-3]: toggle-light restores sq-theme localStorage key so named theme survives light mode toggle round-trip
 
 ### Pending Todos

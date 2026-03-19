@@ -70,6 +70,7 @@ Each task was committed atomically:
 
 1. **Task 1: Add focus rings and active states to all interactive elements** - `824259d` (feat)
 2. **Task 2: Add [data-theme="light"] :root token override block** - `251b196` (feat)
+3. **Bug fix: Correct light-mode CSS selector** - `5148182` (fix)
 
 **Plan metadata:** (final docs commit — see self-check below)
 
@@ -85,10 +86,23 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] CSS selector `[data-theme="light"] :root` never matched — light mode token overrides never applied**
+- **Found during:** Post-checkpoint human verification (Light Mode button reported non-functional)
+- **Issue:** The selector `[data-theme="light"] :root` uses a CSS descendant combinator, meaning it looks for a `:root` pseudo-class element that is a descendant of an element with `[data-theme="light"]`. Since `:root` is the `<html>` element itself and has no ancestors, this selector can never match. The JS toggle correctly set `document.documentElement.setAttribute('data-theme', 'light')` on `<html>`, but the CSS token block never fired, leaving the UI visually unchanged.
+- **Fix:** Changed selector from `[data-theme="light"] :root` to `:root[data-theme="light"]` — the attribute filter is applied directly to `:root` (the `<html>` element), matching correctly when `data-theme="light"` is set on the html element.
+- **Files modified:** `electron/index.html` (line 49, single character context change)
+- **Verification:** Grep confirms `:root[data-theme="light"]` present; no other broken descendant-combinator selectors remain
+- **Committed in:** `5148182` (fix(quick-3): correct light-mode CSS selector)
+
+---
+
+**Total deviations:** 1 auto-fixed (Rule 1 — bug)
+**Impact on plan:** The plan specified `[data-theme="light"] :root` as the selector. This is a structurally invalid CSS selector for overriding `:root` properties and was only detectable at runtime. Single-character fix; no scope creep.
 
 ## Issues Encountered
-None.
+The `[data-theme="light"] :root` CSS selector was specified directly in the plan and implemented as-written. The invalid descendant combinator caused the light mode token block to never fire. Identified and fixed after human checkpoint verification reported the button as non-functional.
 
 ## Next Phase Readiness
 - All interactive elements now have keyboard-accessible focus indicators — accessibility baseline met
@@ -106,3 +120,4 @@ None.
 - 3-SUMMARY.md: FOUND
 - Commit 824259d (Task 1): FOUND
 - Commit 251b196 (Task 2): FOUND
+- Commit 5148182 (Bug fix — light mode CSS selector): FOUND
