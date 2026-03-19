@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed quick-1 PLAN.md — Python server.py refactored into thin Flask controllers
-last_updated: "2026-03-18T21:33:29.955Z"
-last_activity: 2026-03-18 - Completed quick task 1: Refactor python/server.py into thin Flask controllers
+stopped_at: Completed quick-3 PLAN.md — focus rings, active states, light theme token block added
+last_updated: "2026-03-18T22:08:00.000Z"
+last_activity: 2026-03-18 - Completed quick task 3: Apply consistent interactive states and theming
 progress:
   total_phases: 9
   completed_phases: 2
@@ -75,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 02-frontend-modularization]: Settings/profiles/modal orchestration extracted to index.js as cross-cutting concerns, not step-specific
 - [Phase 02-frontend-modularization]: data-action attributes on sidebar buttons for no-inline-handler targeting in wireStaticHandlers()
 - [Phase 02-frontend-modularization]: Human UAT required before marking ARCH-01/02/03 complete — runtime event delegation cannot be fully verified by static analysis alone
+- [quick-3]: :focus-visible used exclusively over :focus for keyboard navigation rings — matches browser focus-visible heuristic, avoids mouse-click outline noise
+- [quick-3]: [data-theme="light"] :root block uses CSS attribute+descendant selector to override base :root tokens — zero element-level overrides needed for full light theme
+- [quick-3]: toggle-light restores sq-theme localStorage key so named theme survives light mode toggle round-trip
 
 ### Pending Todos
 
@@ -91,9 +94,10 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 1 | Refactor python/server.py into thin Flask controllers. Extract all regex/extraction logic into python/extractor.py, all docx generation into python/generator.py, all constants (port, file size limits, field names) into python/constants.py. server.py routes import and delegate — no logic inline. Zero behavioral regression: /parse and /generate_quote return identical output. Reference .planning/phases/02-*/SUMMARY.md for project conventions. | 2026-03-18 | 953343a | [1-refactor-python-server-py-into-thin-flas](./quick/1-refactor-python-server-py-into-thin-flas/) |
 | 2 | Establish CSS custom property token system. Define canonical :root block with 20+ named tokens (color palette, spacing scale, typography scale, border radius). Replace all hardcoded terse aliases (--gold, --bg, --red, etc.) throughout CSS and JS inline styles with semantic --color-*/--space-*/--text-*/--radius-* names. Update theme.js THEMES vars keys to match. | 2026-03-18 | 8aa7c8f | [2-establish-a-css-custom-property-token-sy](./quick/2-establish-a-css-custom-property-token-sy/) |
+| 3 | Apply consistent interactive states and theming. Add :focus-visible focus rings and :active pressed states to all interactive elements using token variables. Add [data-theme="light"] :root block overriding all 14 color tokens. Add Light Mode sidebar toggle button with handler. | 2026-03-18 | 251b196 | [3-apply-consistent-interactive-states-and-](./quick/3-apply-consistent-interactive-states-and-/) |
 
 ## Session Continuity
 
-Last session: 2026-03-18T21:58:50Z
-Stopped at: Completed quick-2 PLAN.md — CSS custom property token system established
+Last session: 2026-03-18T22:08:00Z
+Stopped at: Completed quick-3 PLAN.md — focus rings, active states, light theme token block added (checkpoint:human-verify pending)
 Resume file: None
