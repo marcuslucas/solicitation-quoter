@@ -110,7 +110,7 @@ Plans:
 
 Plans:
 - [ ] 06-01-PLAN.md — Parse error specificity (ERR-01), quote generation retry (ERR-02), error.html token update (ERR-04)
-- [ ] 06-02-PLAN.md — Implement doSamLookup with error handling and manual entry fallback (ERR-03)
+- [x] 06-02-PLAN.md — Implement doSamLookup with error handling and manual entry fallback (ERR-03)
 - [ ] 06-03-PLAN.md — Form validation gates: inline field errors blocking step advancement (ERR-05)
 
 ### Phase 7: Loading & Progress Feedback
@@ -160,7 +160,7 @@ Plans:
 | 3. Backend Structure | 1/1 | Complete | 2026-03-18 |
 | 4. CSS Design Tokens | 4/4 | Complete | 2026-03-22 |
 | 5. Interactive States & Theming | 0/0 | Complete (absorbed into Phase 4) | 2026-03-22 |
-| 6. Error States | 0/3 | In progress | - |
+| 6. Error States | 1/3 | In Progress|  |
 | 7. Loading & Progress Feedback | 0/TBD | Not started | - |
 | 8. Data Quality | 0/TBD | Not started | - |
 | 9. Reliability & Config | 0/TBD | Not started | - |
