@@ -36,7 +36,7 @@
 - [x] **ERR-02**: Quote generation failure surfaces reason and provides retry path
 - [x] **ERR-03**: SAM.gov lookup failure shown clearly with fallback to manual entry
 - [x] **ERR-04**: Network/backend unavailable state detected and shown on startup
-- [ ] **ERR-05**: Form validation inline — required fields flagged before user can proceed to next step
+- [x] **ERR-05**: Form validation inline — required fields flagged before user can proceed to next step
 
 ### Loading States
 
@@ -112,7 +112,7 @@
 | ERR-02 | Phase 6 | Complete |
 | ERR-03 | Phase 6 | Complete |
 | ERR-04 | Phase 6 | Complete |
-| ERR-05 | Phase 6 | Pending |
+| ERR-05 | Phase 6 | Complete |
 | LOAD-01 | Phase 7 | Pending |
 | LOAD-02 | Phase 7 | Pending |
 | LOAD-03 | Phase 7 | Pending |

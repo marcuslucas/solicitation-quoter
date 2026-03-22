@@ -111,7 +111,7 @@ Plans:
 Plans:
 - [x] 06-01-PLAN.md — Parse error specificity (ERR-01), quote generation retry (ERR-02), error.html token update (ERR-04)
 - [x] 06-02-PLAN.md — Implement doSamLookup with error handling and manual entry fallback (ERR-03)
-- [ ] 06-03-PLAN.md — Form validation gates: inline field errors blocking step advancement (ERR-05)
+- [x] 06-03-PLAN.md — Form validation gates: inline field errors blocking step advancement (ERR-05)
 
 ### Phase 7: Loading & Progress Feedback
 **Goal**: Every async operation in the wizard shows a progress indicator with a current-operation label, and interactive controls are disabled while the operation is in flight
