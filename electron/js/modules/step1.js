@@ -180,7 +180,7 @@ function step1(c) {
   ${resumeBanner}
   <div class="card">
     <div class="card-title"><span class="dot"></span>Select Solicitation Document</div>
-    <div class="dropzone" id="dz">
+    <div class="dropzone" id="dz" tabindex="0">
       <div class="dz-title">Drop your solicitation file here</div>
       <div class="dz-sub">or click to browse</div>
       <div class="dz-types"><span class="pill">PDF</span><span class="pill">DOCX</span><span class="pill">TXT</span></div>
@@ -216,6 +216,7 @@ function step1(c) {
     dz.addEventListener('drop', onDrop)
     dz.addEventListener('dragover', onDragOver)
     dz.addEventListener('dragleave', onDragLeave)
+    dz.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pickFile() } })
   }
 
   // Wire buttons

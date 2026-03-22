@@ -142,6 +142,17 @@ input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px soli
 .nav-item:active{background:var(--color-surface-raised)}
 .settings-btn:active{background:var(--color-surface-raised);color:var(--color-text)}
 .sd-trigger:active{color:var(--color-text);border-color:var(--color-text)}
+/* Dropzone interactive states */
+.dropzone:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.dropzone:active{border-color:var(--color-primary);opacity:.9}
+/* Toast close button states */
+.toast-x:focus-visible{outline:2px solid var(--color-primary);outline-offset:1px}
+.toast-x:active{opacity:.7}
+/* Theme legacy toggle states */
+.theme-legacy-toggle:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+.theme-legacy-toggle:active{color:var(--color-text)}
+/* Links */
+a:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
 /* Speed dial */
 .speed-dial{display:flex;align-items:center;margin-bottom:var(--space-xs)}
 .sd-trigger{width:30px;height:30px;border-radius:50%;background:var(--color-surface-raised);border:1px solid var(--color-border);color:var(--color-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .35s cubic-bezier(.34,1.56,.64,1),color .15s,background .15s,border-color .15s;flex-shrink:0;padding:0;transform-origin:15px 15px}
