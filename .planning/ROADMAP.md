@@ -84,7 +84,7 @@ Plans:
 - [x] 04-01-PLAN.md — Extend :root tokens (semantic typography, expanded spacing, contrast colors) and replace all hardcoded values in base CSS
 - [x] 04-02-PLAN.md — Replace all hardcoded hex colors in theme override blocks with var(--color-*) tokens; fix JS inline style colors
 - [x] 04-03-PLAN.md — Interactive states audit: add missing hover/focus-visible/active states; button variant consistency check
-- [ ] 04-04-PLAN.md — Gap closure: document step4.js DOCX-preview colors as UI-01 exception; fix REQUIREMENTS.md traceability
+- [x] 04-04-PLAN.md — Gap closure: document step4.js DOCX-preview colors as UI-01 exception; fix REQUIREMENTS.md traceability
 
 ### Phase 5: Interactive States & Theming
 **Goal**: Every interactive element has consistent hover, focus, and active states; button variants are uniform across all wizard steps; dark/light theme tokens are fully scoped with no overrides
