@@ -106,7 +106,12 @@ Plans:
   3. A SAM.gov lookup that fails shows a clear message and automatically activates the manual entry fields
   4. Launching the app when the Python backend fails to start shows an error page explaining the issue — not a blank screen
   5. Clicking "Next" on a wizard step with unfilled required fields highlights those fields inline — the user does not advance to the next step
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Parse error specificity (ERR-01), quote generation retry (ERR-02), error.html token update (ERR-04)
+- [ ] 06-02-PLAN.md — Implement doSamLookup with error handling and manual entry fallback (ERR-03)
+- [ ] 06-03-PLAN.md — Form validation gates: inline field errors blocking step advancement (ERR-05)
 
 ### Phase 7: Loading & Progress Feedback
 **Goal**: Every async operation in the wizard shows a progress indicator with a current-operation label, and interactive controls are disabled while the operation is in flight
@@ -155,7 +160,7 @@ Plans:
 | 3. Backend Structure | 1/1 | Complete | 2026-03-18 |
 | 4. CSS Design Tokens | 4/4 | Complete | 2026-03-22 |
 | 5. Interactive States & Theming | 0/0 | Complete (absorbed into Phase 4) | 2026-03-22 |
-| 6. Error States | 0/TBD | Not started | - |
+| 6. Error States | 0/3 | In progress | - |
 | 7. Loading & Progress Feedback | 0/TBD | Not started | - |
 | 8. Data Quality | 0/TBD | Not started | - |
 | 9. Reliability & Config | 0/TBD | Not started | - |
