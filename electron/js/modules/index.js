@@ -75,7 +75,8 @@ function showEncryptionWarning() {
   if (!banner) {
     banner = document.createElement('div')
     banner.id = warningId
-    banner.style.cssText = 'background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:4px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.4;'
+    banner.className = 'alert alert-warn'
+    banner.style.cssText = 'font-size:var(--text-md);line-height:1.4;'
     banner.textContent = 'Secure storage is unavailable on this system. Your API key cannot be saved — you will need to re-enter it each session.'
     const keyInput = document.getElementById('m-apikey')
     if (keyInput && keyInput.parentElement) {

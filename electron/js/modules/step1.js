@@ -195,7 +195,7 @@ function step1(c) {
   <div class="speed-dial">
     <button class="sd-trigger" id="sd-trigger" aria-label="Quick actions" aria-expanded="false" title="Quick actions"><svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="5.5" y1="0" x2="5.5" y2="11"/><line x1="0" y1="5.5" x2="11" y2="5.5"/></svg></button>
     <div class="sd-items" id="sd-items">
-      <button class="btn btn-ghost btn-sm sd-item" id="qa-ai-btn">AI Extraction${window.S.apiKey ? ' <span style="color:var(--green);font-size:10px">&#9679; active</span>' : ''}</button>
+      <button class="btn btn-ghost btn-sm sd-item" id="qa-ai-btn">AI Extraction${window.S.apiKey ? ' <span style="color:var(--color-success);font-size:10px">&#9679; active</span>' : ''}</button>
       <button class="btn btn-ghost btn-sm sd-item" id="qa-sam-btn">SAM.gov Lookup</button>
       <button class="btn btn-ghost btn-sm sd-item" id="qa-demo-btn">Load Demo Data</button>
     </div>
