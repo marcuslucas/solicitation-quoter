@@ -172,6 +172,98 @@ function closeSamModal() {
   document.getElementById('sam-modal-overlay').classList.add('hidden')
 }
 
+async function doSamLookup() {
+  const noticeId = document.getElementById('sam-noticeid').value.trim()
+  const apiKey = document.getElementById('sam-key').value.trim()
+
+  const samProg = document.getElementById('sam-prog')
+  const samErr = document.getElementById('sam-err')
+  const samOk = document.getElementById('sam-ok')
+  const samBtn = document.getElementById('sam-btn')
+
+  if (!noticeId) {
+    samErr.classList.remove('hidden')
+    samErr.innerHTML = '<div class="alert alert-error">Enter a Notice ID to look up.</div>'
+    return
+  }
+  if (!apiKey) {
+    samErr.classList.remove('hidden')
+    samErr.innerHTML = '<div class="alert alert-error">Enter your SAM.gov API key.</div>'
+    return
+  }
+
+  samProg.classList.remove('hidden')
+  samErr.classList.add('hidden')
+  samOk.classList.add('hidden')
+  samBtn.disabled = true
+
+  try {
+    const r = await fetch(`http://127.0.0.1:${window.S.port}/sam_lookup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notice_id: noticeId, api_key: apiKey })
+    })
+
+    const data = await r.json()
+    if (!r.ok) throw new Error(data.error || `SAM.gov lookup failed (HTTP ${r.status})`)
+    if (!data.success) throw new Error(data.error || 'Lookup returned no data')
+
+    // Save the SAM key for future use
+    window.S.samKey = apiKey
+    try { localStorage.setItem('samKey', apiKey) } catch(e) {}
+
+    // Populate extracted data
+    window.S.extracted = data.data
+
+    // Populate line items if returned
+    if (Array.isArray(data.line_items) && data.line_items.length) {
+      window.S.items = data.line_items.map((li, i) => ({
+        id: i + 1,
+        description: String(li.description || ''),
+        size: String(li.size || ''),
+        unit: String(li.unit || 'EA'),
+        qty: li.qty ?? '',
+        unit_price: li.unit_price ?? ''
+      }))
+    }
+
+    samProg.classList.add('hidden')
+    closeSamModal()
+    window.S.done.add(1)
+    window.goTo(2)
+    window.toast('SAM.gov data loaded', 'success')
+  } catch(e) {
+    samProg.classList.add('hidden')
+    samBtn.disabled = false
+
+    let msg = e.message || 'SAM.gov lookup failed'
+    if (e.message && e.message.includes('Failed to fetch')) {
+      msg = 'Could not reach the backend server. Make sure the application is fully started.'
+    }
+
+    // Close modal, show error in step 2, auto-focus first field
+    closeSamModal()
+
+    // Navigate to step 2 so user sees manual entry fields
+    window.S.step = 2
+    window.render(2)
+
+    // Show error above step 2 fields after render
+    const content = document.getElementById('content')
+    if (content) {
+      const errDiv = document.createElement('div')
+      errDiv.className = 'alert alert-error'
+      errDiv.style.marginBottom = '16px'
+      errDiv.innerHTML = `<strong>SAM.gov lookup failed:</strong> ${window.esc(msg)}`
+      content.insertBefore(errDiv, content.firstChild)
+    }
+
+    // Auto-focus first manual entry field
+    const firstInput = document.querySelector('#content input[data-field]')
+    if (firstInput) firstInput.focus()
+  }
+}
+
 // ── VENDOR PROFILES ───────────────────────────────────────────────────────────
 
 function getProfiles() {
@@ -479,6 +571,7 @@ window.closeAiModal = closeAiModal
 window.saveAiKey = saveAiKey
 window.openSamModal = openSamModal
 window.closeSamModal = closeSamModal
+window.doSamLookup = doSamLookup
 window.openProfiles = openProfiles
 window.closeProfiles = closeProfiles
 window.exportData = exportData
