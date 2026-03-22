@@ -268,7 +268,10 @@ a:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
 
 /* ── INLINE FIELD ERRORS ─────────────────────────────────────────────────── */
 .field-err{font-size:var(--text-sm);color:var(--color-error);margin-top:3px;letter-spacing:.3px}
+.field-error-msg{font-size:var(--text-sm);color:var(--color-error);margin-top:3px;letter-spacing:.3px;display:block}
 input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!important}
+@keyframes field-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.field-shake{animation:field-shake .3s ease-in-out}
 
 /* ── PREFLIGHT CHECKLIST ─────────────────────────────────────────────────── */
 .preflight{border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg);font-size:12px}
