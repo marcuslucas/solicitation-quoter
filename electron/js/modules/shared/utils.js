@@ -130,7 +130,14 @@ function goTo(n) {
   document.getElementById('tt').textContent = TITLES[n]
 }
 
-function next() { S.done.add(S.step); goTo(S.step + 1) }
+function next() {
+  // Per D-12: validate before advancing. Per D-17: step 2 has no validation.
+  // Each step can register a window.validateStepN function. If it returns false, block.
+  const validator = window['validateStep' + S.step]
+  if (typeof validator === 'function' && !validator()) return
+  S.done.add(S.step)
+  goTo(S.step + 1)
+}
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 // Looks up step functions via window to avoid circular dependency with step modules.

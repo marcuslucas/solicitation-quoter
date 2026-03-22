@@ -244,6 +244,11 @@ function wireLineItemDelegation() {
     if (input.dataset.col === 'qty' || input.dataset.col === 'unit_price') {
       updTotals()
     }
+    if (input.classList.contains('invalid')) {
+      input.classList.remove('invalid', 'field-shake')
+      const errMsg = input.parentElement?.querySelector('.field-error-msg')
+      if (errMsg) errMsg.remove()
+    }
   })
   tbody.addEventListener('click', e => {
     const btn = e.target.closest('button[data-action]')
@@ -285,6 +290,57 @@ function wireOptionYearsDelegation() {
     const idx = parseInt(btn.dataset.oyIndex, 10)
     if (!isNaN(idx)) removeOptionYear(idx)
   })
+}
+
+// ── STEP 3 VALIDATION (ERR-05) ────────────────────────────────────────────────
+
+function clearFieldErrors() {
+  document.querySelectorAll('.invalid').forEach(el => el.classList.remove('invalid', 'field-shake'))
+  document.querySelectorAll('.field-error-msg').forEach(el => el.remove())
+}
+
+function markFieldError(input, message) {
+  input.classList.add('invalid', 'field-shake')
+  input.addEventListener('animationend', () => input.classList.remove('field-shake'), { once: true })
+  // Per D-14: small error message directly below the input
+  const msg = document.createElement('span')
+  msg.className = 'field-error-msg'
+  msg.textContent = message
+  // Insert after the input (inside its parent .field div)
+  input.parentElement.appendChild(msg)
+}
+
+function validateStep3() {
+  clearFieldErrors()
+  let valid = true
+
+  // Per D-15: Company Name is required
+  const companyInput = document.querySelector('input[data-vendor-field="company_name"]')
+  if (companyInput && !companyInput.value.trim()) {
+    markFieldError(companyInput, 'Company name is required')
+    valid = false
+  }
+
+  // Per D-16: At least one line item with description populated
+  const hasLineItem = window.S.items.some(it => it.description && it.description.trim())
+  if (!hasLineItem) {
+    const descInput = document.querySelector('#li-tbody input[data-col="description"]')
+    if (descInput) {
+      markFieldError(descInput, 'At least one line item with a description is required')
+    }
+    valid = false
+  }
+
+  // Focus the first invalid field
+  if (!valid) {
+    const firstInvalid = document.querySelector('.invalid')
+    if (firstInvalid) {
+      firstInvalid.focus()
+      firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
+  return valid
 }
 
 // ── STEP 3 RENDER ─────────────────────────────────────────────────────────────
@@ -453,6 +509,12 @@ function step3(c) {
       window.S.vendor[field] = e.target.value
       // Update totals immediately when freight or tax changes
       if (field === 'freight' || field === 'tax_rate') updTotals()
+      // Clear validation error on this field when user types
+      if (e.target.classList.contains('invalid')) {
+        e.target.classList.remove('invalid', 'field-shake')
+        const errMsg = e.target.parentElement?.querySelector('.field-error-msg')
+        if (errMsg) errMsg.remove()
+      }
     })
     vendorForm.addEventListener('change', e => {
       const field = e.target.dataset.vendorField
@@ -511,3 +573,4 @@ window.step3 = step3
 window.initStep3 = init
 // Expose updTotals globally so step4 can call it when returning to step3
 window.updTotals = updTotals
+window.validateStep3 = validateStep3
