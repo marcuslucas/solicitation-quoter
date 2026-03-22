@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-22T17:02:48.612Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-22T17:10:16.879Z"
 progress:
   total_phases: 9
   completed_phases: 1
   total_plans: 11
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 ---
@@ -68,6 +68,7 @@ Plan: 2 of 3
 | Phase 02-frontend-modularization P05 | 2 | 1 tasks | 0 files |
 | Phase 02-frontend-modularization P05 | 17 | 2 tasks | 0 files |
 | Phase 04 P01 | 4 | 2 tasks | 1 files |
+| Phase 04 P02 | 5 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Recent decisions affecting current work:
 - [quick-3]: Light mode toggle button and :root[data-theme="light"] CSS block removed — all theme switching via Themes modal; eliminates duplicate code paths and potential specificity conflicts with inline vars
 - [Phase 04]: Individual typography property tokens (--text-heading-size/weight/lh etc) used over CSS font shorthand — shorthand resets unspecified sub-properties breaking theme font-family overrides
 - [Phase 04]: --color-contrast-dark/#000 and --color-contrast-light/#fff tokens added so btn-primary, btn-success, step-num active/done use var() references instead of raw hex
+- [Phase 04]: Add --color-info token to :root and all 9 themes — theme-specific info alert colors don't map to existing tokens; --color-info is cleaner than leaving raw hex in theme override blocks
+- [Phase 04]: Use alert/alert-warn class for encryption warning banner instead of inline hex styles — class-based approach gives automatic theming across all 9 themes
 
 ### Pending Todos
 
@@ -114,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T17:02:44.182Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-22T17:10:16.875Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None

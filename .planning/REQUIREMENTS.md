@@ -27,7 +27,7 @@
 - [x] **UI-02**: Typography hierarchy: heading/subheading/body/label sizes defined and applied consistently
 - [x] **UI-03**: Spacing scale applied uniformly — no random pixel values throughout CSS
 - [ ] **UI-04**: All interactive elements have consistent hover, focus, and active states
-- [ ] **UI-05**: Dark/light theme tokens properly scoped — no theme-breaking overrides
+- [x] **UI-05**: Dark/light theme tokens properly scoped — no theme-breaking overrides
 - [ ] **UI-06**: Button variants (primary/secondary/danger) consistent across all wizard steps
 
 ### Error States & Feedback
@@ -106,7 +106,7 @@
 | UI-02 | Phase 4 | Complete |
 | UI-03 | Phase 4 | Complete |
 | UI-04 | Phase 5 | Pending |
-| UI-05 | Phase 5 | Pending |
+| UI-05 | Phase 5 | Complete |
 | UI-06 | Phase 5 | Pending |
 | ERR-01 | Phase 6 | Pending |
 | ERR-02 | Phase 6 | Pending |
