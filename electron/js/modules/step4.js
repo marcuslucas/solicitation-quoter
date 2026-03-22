@@ -235,6 +235,7 @@ async function doGenerate() {
   const prog=document.getElementById('gen-prog')
   const err=document.getElementById('gen-err')
   const ok=document.getElementById('gen-ok')
+  err.classList.add('hidden')
   btn.disabled=true; prog.classList.remove('hidden'); err.classList.add('hidden'); ok.classList.add('hidden')
   try {
     const r = await fetch(`http://127.0.0.1:${window.S.port}/generate_quote`,{
@@ -266,7 +267,16 @@ async function doGenerate() {
     btn.disabled=false
   } catch(e) {
     prog.classList.add('hidden'); err.classList.remove('hidden')
-    err.innerHTML=`<div class="alert alert-error">${window.esc(e.message)}</div>`
+    // Per D-06: show specific failure reason + Try Again button
+    // Per D-07: Try Again button inside gen-err div
+    err.innerHTML = `<div class="alert alert-error" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="flex:1">${window.esc(e.message)}</span>
+      <button class="btn btn-danger btn-sm" id="gen-retry-btn">Try Again</button>
+    </div>`
+    document.getElementById('gen-retry-btn')?.addEventListener('click', () => {
+      err.classList.add('hidden')
+      doGenerate()
+    })
     btn.disabled=false
   }
 }
@@ -277,6 +287,7 @@ async function doGeneratePdf() {
   const btn=document.getElementById('pdf-btn')
   const prog=document.getElementById('gen-prog')
   const err=document.getElementById('gen-err')
+  err.classList.add('hidden')
   btn.disabled=true; prog.classList.remove('hidden'); err.classList.add('hidden')
   try {
     const html=buildQuoteHTML(true)
@@ -300,7 +311,14 @@ async function doGeneratePdf() {
     }
   } catch(e) {
     prog.classList.add('hidden'); err.classList.remove('hidden')
-    err.innerHTML=`<div class="alert alert-error">${window.esc(e.message)}</div>`
+    err.innerHTML = `<div class="alert alert-error" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="flex:1">${window.esc(e.message)}</span>
+      <button class="btn btn-danger btn-sm" id="pdf-retry-btn">Try Again</button>
+    </div>`
+    document.getElementById('pdf-retry-btn')?.addEventListener('click', () => {
+      err.classList.add('hidden')
+      doGeneratePdf()
+    })
   }
   btn.disabled=false
 }
