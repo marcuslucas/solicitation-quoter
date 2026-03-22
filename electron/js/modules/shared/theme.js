@@ -13,7 +13,7 @@ const THEMES = {
       '--color-primary':'#00FF41','--color-secondary':'#33FF66',
       '--color-background':'#030C03','--color-surface':'#040F04','--color-surface-raised':'#071407','--color-panel':'#040F04',
       '--color-border':'#1a3d1a','--color-text':'#00CC33','--color-text-muted':'#2a5e2a',
-      '--color-success':'#AAFF00','--color-warning':'#AAFF00','--color-error':'#FF4444','--radius-sm':'2px',
+      '--color-success':'#AAFF00','--color-warning':'#AAFF00','--color-error':'#FF4444','--color-info':'#00FF41','--radius-sm':'2px',
       '--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.07'
     }
   },
@@ -26,7 +26,7 @@ const THEMES = {
       '--color-primary':'#00D4FF','--color-secondary':'#20E8FF',
       '--color-background':'#000000','--color-surface':'#050505','--color-surface-raised':'#0A0A0A','--color-panel':'#050505',
       '--color-border':'#111111','--color-text':'#C0D8E8','--color-text-muted':'#404858',
-      '--color-success':'#00C896','--color-warning':'#00C896','--color-error':'#FF4444','--radius-sm':'2px',
+      '--color-success':'#00C896','--color-warning':'#00C896','--color-error':'#FF4444','--color-info':'#00D4FF','--radius-sm':'2px',
       '--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.04'
     }
   },
@@ -39,7 +39,7 @@ const THEMES = {
       '--color-primary':'#C8AB32','--color-secondary':'#D8C040',
       '--color-background':'#0C0E08','--color-surface':'#1A1D10','--color-surface-raised':'#20231A','--color-panel':'#1A1D10',
       '--color-border':'#2E3020','--color-text':'#E8DDB0','--color-text-muted':'#7A7840',
-      '--color-success':'#8AAA30','--color-warning':'#8AAA30','--color-error':'#C83020','--radius-sm':'2px',
+      '--color-success':'#8AAA30','--color-warning':'#8AAA30','--color-error':'#C83020','--color-info':'#C8AB32','--radius-sm':'2px',
       '--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.06'
     }
   },
@@ -52,7 +52,7 @@ const THEMES = {
       '--color-primary':'#E85A1A','--color-secondary':'#F07030',
       '--color-background':'#0F0C0A','--color-surface':'#1E1610','--color-surface-raised':'#251A12','--color-panel':'#1E1610',
       '--color-border':'#3A2518','--color-text':'#F5DCC8','--color-text-muted':'#8A6040',
-      '--color-success':'#8A9840','--color-warning':'#8A9840','--color-error':'#E83020','--radius-sm':'2px',
+      '--color-success':'#8A9840','--color-warning':'#8A9840','--color-error':'#E83020','--color-info':'#E85A1A','--radius-sm':'2px',
       '--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.06'
     }
   },
@@ -65,7 +65,7 @@ const THEMES = {
       '--color-primary':'#5B8AB8','--color-secondary':'#7AA8D8',
       '--color-background':'#07090D','--color-surface':'#060810','--color-surface-raised':'#0A0D14','--color-panel':'#060810',
       '--color-border':'#1A2535','--color-text':'#C8D8E8','--color-text-muted':'#4A6080',
-      '--color-success':'#4A9870','--color-warning':'#4A9870','--color-error':'#D05050','--radius-sm':'2px',
+      '--color-success':'#4A9870','--color-warning':'#4A9870','--color-error':'#D05050','--color-info':'#5B8AB8','--radius-sm':'2px',
       '--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0.05'
     }
   },
@@ -78,7 +78,7 @@ const THEMES = {
       '--color-primary':'#C0281E','--color-secondary':'#D03828',
       '--color-background':'#E8E4DC','--color-surface':'#DEDAD2','--color-surface-raised':'#D0CBC0','--color-panel':'#E8E4DC',
       '--color-border':'#CBC2B8','--color-text':'#1A1814','--color-text-muted':'#6B6560',
-      '--color-success':'#2E6E30','--color-warning':'#2E6E30','--color-error':'#C0281E','--radius-sm':'2px',
+      '--color-success':'#2E6E30','--color-warning':'#2E6E30','--color-error':'#C0281E','--color-info':'#0050A0','--radius-sm':'2px',
       '--font':"Calibri,'Calibri',sans-serif",'--scanline-opacity':'0'
     }
   },
@@ -91,7 +91,7 @@ const THEMES = {
       '--color-primary':'#c8a882','--color-secondary':'#d4b896',
       '--color-background':'#faf8f4','--color-surface':'#f9f7f3','--color-surface-raised':'#f4f1ea','--color-panel':'#f9f7f3',
       '--color-border':'#dedad2','--color-text':'#1a1916','--color-text-muted':'#a09c92',
-      '--color-success':'#5a7a5a','--color-warning':'#5a7a5a','--color-error':'#a03830','--radius-sm':'0px',
+      '--color-success':'#5a7a5a','--color-warning':'#5a7a5a','--color-error':'#a03830','--color-info':'#7a6040','--radius-sm':'0px',
       '--font':"'Cormorant Garamond',Georgia,serif",'--scanline-opacity':'0'
     }
   },
@@ -104,7 +104,7 @@ const THEMES = {
       '--color-primary':'#007AFF','--color-secondary':'#3395FF',
       '--color-background':'#F2F2F7','--color-surface':'#FFFFFF','--color-surface-raised':'#F2F2F7','--color-panel':'#FFFFFF',
       '--color-border':'#C6C6C8','--color-text':'#1C1C1E','--color-text-muted':'#8E8E93',
-      '--color-success':'#34C759','--color-warning':'#34C759','--color-error':'#FF3B30','--radius-sm':'10px',
+      '--color-success':'#34C759','--color-warning':'#34C759','--color-error':'#FF3B30','--color-info':'#0050A0','--radius-sm':'10px',
       '--font':"Calibri,'Calibri',sans-serif",
       '--scanline-opacity':'0'
     }
@@ -118,7 +118,7 @@ const THEMES = {
       '--color-primary':'#0A84FF','--color-secondary':'#409CFF',
       '--color-background':'#000000','--color-surface':'#1C1C1E','--color-surface-raised':'#2C2C2E','--color-panel':'#1C1C1E',
       '--color-border':'#3A3A3C','--color-text':'#FFFFFF','--color-text-muted':'#8E8E93',
-      '--color-success':'#30D158','--color-warning':'#30D158','--color-error':'#FF453A','--radius-sm':'10px',
+      '--color-success':'#30D158','--color-warning':'#30D158','--color-error':'#FF453A','--color-info':'#64ACFF','--radius-sm':'10px',
       '--font':"Calibri,'Calibri',sans-serif",
       '--scanline-opacity':'0'
     }
