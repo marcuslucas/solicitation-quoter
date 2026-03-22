@@ -26,9 +26,9 @@
 - [x] **UI-01**: Consistent CSS custom property tokens for colors, spacing, and typography (no hardcoded values)
 - [x] **UI-02**: Typography hierarchy: heading/subheading/body/label sizes defined and applied consistently
 - [x] **UI-03**: Spacing scale applied uniformly — no random pixel values throughout CSS
-- [ ] **UI-04**: All interactive elements have consistent hover, focus, and active states
+- [x] **UI-04**: All interactive elements have consistent hover, focus, and active states
 - [x] **UI-05**: Dark/light theme tokens properly scoped — no theme-breaking overrides
-- [ ] **UI-06**: Button variants (primary/secondary/danger) consistent across all wizard steps
+- [x] **UI-06**: Button variants (primary/secondary/danger) consistent across all wizard steps
 
 ### Error States & Feedback
 
@@ -105,9 +105,9 @@
 | UI-01 | Phase 4 | Complete |
 | UI-02 | Phase 4 | Complete |
 | UI-03 | Phase 4 | Complete |
-| UI-04 | Phase 5 | Pending |
-| UI-05 | Phase 5 | Complete |
-| UI-06 | Phase 5 | Pending |
+| UI-04 | Phase 4 | Complete |
+| UI-05 | Phase 4 | Complete |
+| UI-06 | Phase 4 | Complete |
 | ERR-01 | Phase 6 | Pending |
 | ERR-02 | Phase 6 | Pending |
 | ERR-03 | Phase 6 | Pending |
@@ -137,4 +137,4 @@
 
 ---
 *Requirements defined: 2026-03-17*
-*Last updated: 2026-03-18 — SEC-01 through SEC-05 marked complete after Phase 1 retroactive tracking fix*
+*Last updated: 2026-03-22 — UI-04/05/06 phase mapping corrected from Phase 5 to Phase 4; step4.js DOCX-preview colors documented as UI-01 exception*

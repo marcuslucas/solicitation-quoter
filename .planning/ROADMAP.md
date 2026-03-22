@@ -9,7 +9,7 @@ This roadmap elevates an existing, working Electron + Python desktop app to prod
 - [x] **Phase 1: Security Hardening** - Eliminate API key exposure, validate uploads, guarantee temp file cleanup, and surface encryption warnings (completed 2026-03-18)
 - [x] **Phase 2: Frontend Modularization** - Break the 2100-line index.html into per-step JS modules with no inline event handlers (completed 2026-03-18)
 - [x] **Phase 3: Backend Structure** - Separate Flask route controllers from extraction/generation logic; centralize constants (completed 2026-03-18 via quick task 1)
-- [ ] **Phase 4: CSS Design Tokens** - Establish color, spacing, and typography token system with consistent application throughout
+- [x] **Phase 4: CSS Design Tokens** - Establish color, spacing, and typography token system with consistent application throughout (completed 2026-03-22)
 - [ ] **Phase 5: Interactive States & Theming** - Consistent hover/focus/active states, button variants, and scoped theme tokens
 - [ ] **Phase 6: Error States** - Actionable error messages for parse failures, quote generation, SAM.gov lookups, startup, and form validation
 - [ ] **Phase 7: Loading & Progress Feedback** - Progress indicators and disabled-button guards for all async operations
@@ -78,12 +78,13 @@ Plans:
   4. Tabbing through the wizard with keyboard shows a visible focus ring on every interactive element
   5. Button variants consistent across all wizard steps — no un-classed buttons
   6. Switching themes shows no theme leak — all colored elements follow token values
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Extend :root tokens (semantic typography, expanded spacing, contrast colors) and replace all hardcoded values in base CSS
-- [ ] 04-02-PLAN.md — Replace all hardcoded hex colors in theme override blocks with var(--color-*) tokens; fix JS inline style colors
-- [ ] 04-03-PLAN.md — Interactive states audit: add missing hover/focus-visible/active states; button variant consistency check
+- [x] 04-01-PLAN.md — Extend :root tokens (semantic typography, expanded spacing, contrast colors) and replace all hardcoded values in base CSS
+- [x] 04-02-PLAN.md — Replace all hardcoded hex colors in theme override blocks with var(--color-*) tokens; fix JS inline style colors
+- [x] 04-03-PLAN.md — Interactive states audit: add missing hover/focus-visible/active states; button variant consistency check
+- [ ] 04-04-PLAN.md — Gap closure: document step4.js DOCX-preview colors as UI-01 exception; fix REQUIREMENTS.md traceability
 
 ### Phase 5: Interactive States & Theming
 **Goal**: Every interactive element has consistent hover, focus, and active states; button variants are uniform across all wizard steps; dark/light theme tokens are fully scoped with no overrides
@@ -152,7 +153,7 @@ Plans:
 | 1. Security Hardening | 5/5 | Complete | 2026-03-18 |
 | 2. Frontend Modularization | 5/5 | Complete   | 2026-03-18 |
 | 3. Backend Structure | 1/1 | Complete | 2026-03-18 |
-| 4. CSS Design Tokens | 2/3 | In Progress|  |
+| 4. CSS Design Tokens | 3/4 | Gap closure | - |
 | 5. Interactive States & Theming | 0/0 | Covered by Phase 4 | - |
 | 6. Error States | 0/TBD | Not started | - |
 | 7. Loading & Progress Feedback | 0/TBD | Not started | - |

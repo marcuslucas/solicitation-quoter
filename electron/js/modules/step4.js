@@ -13,7 +13,23 @@ function buildQuoteHTML(forPrint) {
   const today=new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
   const validity=v.validity_period||window.S.validity||'30 days'
 
-  // DOCX-matched palette
+  // ── DOCX-PRINT EXCEPTION (UI-01) ──────────────────────────────────────────
+  // These 9 hex constants are INTENTIONALLY hardcoded and exempt from the
+  // CSS token system. They mirror python/generator.py exactly so the on-screen
+  // preview matches the downloaded .docx file pixel-for-pixel. Making these
+  // theme-responsive would break print/export consistency.
+  //
+  // Matching generator.py locations:
+  //   #EFEFEF -> generator.py:86   (header left cell bg)
+  //   #F5F5F5 -> generator.py:86   (header right cell bg)
+  //   #F0F0F0 -> generator.py:162,211,250-251 (label cell bg, totals row bg)
+  //   #1A1A1A -> generator.py:44,185 (border color, line-item header bg)
+  //   #FFFFFF -> generator.py:198  (even row bg)
+  //   #F7F9FC -> generator.py:198  (odd row bg)
+  //   #000000 -> navy text color   (heading text)
+  //   #333333 -> dark gray text    (body text)
+  //   #D0D0D0 -> border color      (table cell borders)
+  // ──────────────────────────────────────────────────────────────────────────
   const hdrLeft='#EFEFEF', hdrRight='#F5F5F5', labelCol='#F0F0F0'
   const liHdr='#1A1A1A', rowEven='#FFFFFF', rowOdd='#F7F9FC', totRow='#F0F0F0'
   const navy='#000000', dgray='#333333', border='#D0D0D0'
