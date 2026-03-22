@@ -32,10 +32,10 @@
 
 ### Error States & Feedback
 
-- [ ] **ERR-01**: Parse errors shown with specific, actionable message (not generic "error occurred")
-- [ ] **ERR-02**: Quote generation failure surfaces reason and provides retry path
+- [x] **ERR-01**: Parse errors shown with specific, actionable message (not generic "error occurred")
+- [x] **ERR-02**: Quote generation failure surfaces reason and provides retry path
 - [x] **ERR-03**: SAM.gov lookup failure shown clearly with fallback to manual entry
-- [ ] **ERR-04**: Network/backend unavailable state detected and shown on startup
+- [x] **ERR-04**: Network/backend unavailable state detected and shown on startup
 - [ ] **ERR-05**: Form validation inline — required fields flagged before user can proceed to next step
 
 ### Loading States
@@ -108,10 +108,10 @@
 | UI-04 | Phase 4 | Complete |
 | UI-05 | Phase 4 | Complete |
 | UI-06 | Phase 4 | Complete |
-| ERR-01 | Phase 6 | Pending |
-| ERR-02 | Phase 6 | Pending |
+| ERR-01 | Phase 6 | Complete |
+| ERR-02 | Phase 6 | Complete |
 | ERR-03 | Phase 6 | Complete |
-| ERR-04 | Phase 6 | Pending |
+| ERR-04 | Phase 6 | Complete |
 | ERR-05 | Phase 6 | Pending |
 | LOAD-01 | Phase 7 | Pending |
 | LOAD-02 | Phase 7 | Pending |
