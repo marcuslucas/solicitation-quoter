@@ -111,6 +111,10 @@ async function doParse() {
     } else throw new Error('No file selected')
     p(40, 'Parsing document...')
     const r = await fetch(`http://127.0.0.1:${window.S.port}/parse`, { method:'POST', body:fd })
+    if (!r.ok) {
+      const errBody = await r.json().catch(() => ({}))
+      throw new Error(errBody.error || `Server error (HTTP ${r.status})`)
+    }
     p(75, window.S.apiKey ? 'Running AI extraction...' : 'Extracting data...')
     const data = await r.json()
     if (!data.success) throw new Error(data.error || 'Extraction failed')
@@ -132,7 +136,17 @@ async function doParse() {
     setTimeout(() => goTo(2), 500)
   } catch(e) {
     err.classList.remove('hidden')
-    err.innerHTML = `<div class="alert alert-error">${esc(e.message)}</div>`
+    let msg = e.message || 'An unknown error occurred'
+    // Per D-02: distinguish specific failure scenarios
+    if (e.message && e.message.includes('Failed to fetch')) {
+      msg = 'Could not reach the backend server. Make sure the application is fully started and try again.'
+    } else if (e.message && e.message.includes('timed out')) {
+      msg = 'Extraction timed out — try a smaller file or check your connection.'
+    } else if (e.message && e.message.includes('No file selected')) {
+      msg = 'No file selected — please upload a PDF, DOCX, or TXT file first.'
+    }
+    // Per D-03, D-04: display in parse-err using alert-error class; surface backend error verbatim
+    err.innerHTML = `<div class="alert alert-error">${esc(msg)}</div>`
     btn.disabled = false; p(0,'')
   }
 }
