@@ -1,14 +1,31 @@
 <!DOCTYPE html><html><head><meta charset="UTF-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0F1923;color:#E2E8F0;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;padding:40px;text-align:center}
-h1{color:#E74C3C;font-size:20px}p{color:#7A9BBB;font-size:13px;max-width:460px;line-height:1.6}
-code{color:#C9A02B;background:#1A2738;padding:2px 6px;border-radius:4px}
-button{margin-top:8px;padding:10px 22px;background:#C9A02B;color:#000;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+:root{
+  --color-bg:#0F1923;
+  --color-text:#E2E8F0;
+  --color-text-muted:#7A9BBB;
+  --color-error:#FF4444;
+  --color-primary:#C9A02B;
+  --color-surface:#1A2738;
+  --radius-md:8px;
+  --text-md:13px;
+  --text-lg:20px;
+  --space-sm:8px;
+  --space-md:16px;
+  --space-lg:40px;
+}
+body{background:var(--color-bg);color:var(--color-text);font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:var(--space-md);padding:var(--space-lg);text-align:center}
+h1{color:var(--color-error);font-size:var(--text-lg)}
+p{color:var(--color-text-muted);font-size:var(--text-md);max-width:460px;line-height:1.6}
+code{color:var(--color-primary);background:var(--color-surface);padding:2px 6px;border-radius:4px}
+button{margin-top:var(--space-sm);padding:10px 22px;background:var(--color-primary);color:#000;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:var(--text-md);font-weight:600}
+button:hover{opacity:0.9}
+button:active{opacity:0.8}
 </style></head><body>
-<div style="font-size:44px">⚠️</div>
+<div style="font-size:44px">&#x26A0;&#xFE0F;</div>
 <h1>Backend Failed to Start</h1>
 <p>The Python backend could not launch. Make sure Python is installed and dependencies are set up:</p>
 <p><code>pip install flask pdfplumber pypdf python-docx anthropic</code></p>
 <p>Then relaunch with <code>npm start</code></p>
-<button onclick="location.reload()">↺ Retry</button>
+<button onclick="location.reload()">&#x21BA; Retry</button>
 </body></html>
