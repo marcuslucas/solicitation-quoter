@@ -10,7 +10,7 @@ This roadmap elevates an existing, working Electron + Python desktop app to prod
 - [x] **Phase 2: Frontend Modularization** - Break the 2100-line index.html into per-step JS modules with no inline event handlers (completed 2026-03-18)
 - [x] **Phase 3: Backend Structure** - Separate Flask route controllers from extraction/generation logic; centralize constants (completed 2026-03-18 via quick task 1)
 - [x] **Phase 4: CSS Design Tokens** - Establish color, spacing, and typography token system with consistent application throughout (completed 2026-03-22)
-- [ ] **Phase 5: Interactive States & Theming** - Consistent hover/focus/active states, button variants, and scoped theme tokens
+- [x] **Phase 5: Interactive States & Theming** - Consistent hover/focus/active states, button variants, and scoped theme tokens (completed 2026-03-22 — absorbed into Phase 4)
 - [ ] **Phase 6: Error States** - Actionable error messages for parse failures, quote generation, SAM.gov lookups, startup, and form validation
 - [ ] **Phase 7: Loading & Progress Feedback** - Progress indicators and disabled-button guards for all async operations
 - [ ] **Phase 8: Data Quality & Extraction Trust Layer** - Scope truncation warnings, SAM.gov field mapping, CSV validation, full extraction confidence scoring system (global + per-field scores, structured flag output, zoom-to-region UI), and NAICS/PSC format validation
@@ -153,8 +153,8 @@ Plans:
 | 1. Security Hardening | 5/5 | Complete | 2026-03-18 |
 | 2. Frontend Modularization | 5/5 | Complete   | 2026-03-18 |
 | 3. Backend Structure | 1/1 | Complete | 2026-03-18 |
-| 4. CSS Design Tokens | 3/4 | Gap closure | - |
-| 5. Interactive States & Theming | 0/0 | Covered by Phase 4 | - |
+| 4. CSS Design Tokens | 4/4 | Complete | 2026-03-22 |
+| 5. Interactive States & Theming | 0/0 | Complete (absorbed into Phase 4) | 2026-03-22 |
 | 6. Error States | 0/TBD | Not started | - |
 | 7. Loading & Progress Feedback | 0/TBD | Not started | - |
 | 8. Data Quality | 0/TBD | Not started | - |
