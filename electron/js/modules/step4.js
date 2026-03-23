@@ -227,7 +227,7 @@ function step4(c) {
     <div style="font-size:12px;color:var(--muted);margin-top:10px">A Save dialog will open. The document opens automatically after saving.</div>
   </div>
   <div id="gen-prog" class="hidden" style="margin-top:12px">
-    <div class="alert alert-info"><div class="spin"></div><span style="margin-left:8px">Generating document...</span></div>
+    <div class="alert alert-info"><div class="spin"></div><span id="gen-msg" style="margin-left:8px">Generating document...</span></div>
   </div>
   <div id="gen-err" class="hidden"></div>
   <div id="gen-ok" class="hidden">
@@ -251,8 +251,15 @@ async function doGenerate() {
   const prog=document.getElementById('gen-prog')
   const err=document.getElementById('gen-err')
   const ok=document.getElementById('gen-ok')
+  const genMsg=document.getElementById('gen-msg')
+  const pdfBtn=document.getElementById('pdf-btn')
+  const backBtn=document.getElementById('step4-back')
   err.classList.add('hidden')
-  btn.disabled=true; prog.classList.remove('hidden'); err.classList.add('hidden'); ok.classList.add('hidden')
+  btn.disabled=true; pdfBtn.disabled=true; backBtn.disabled=true
+  prog.classList.remove('hidden'); err.classList.add('hidden'); ok.classList.add('hidden')
+  genMsg.textContent = 'Building document...'
+  const t1 = setTimeout(() => { genMsg.textContent = 'Formatting...' }, 1000)
+  const t2 = setTimeout(() => { genMsg.textContent = 'Finalizing...' }, 3000)
   try {
     const r = await fetch(`http://127.0.0.1:${window.S.port}/generate_quote`,{
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -264,6 +271,7 @@ async function doGenerate() {
     const bytes=Array.from(new Uint8Array(ab))
     const sol=(window.S.extracted.solicitation_number||'Quote').replace(/[^A-Za-z0-9\-_]/g,'_')
     const name=`Quote_${sol}.docx`
+    clearTimeout(t1); clearTimeout(t2)
     prog.classList.add('hidden')
     if(window.api){
       const res=await window.api.saveQuote({bytes,name})
@@ -280,8 +288,9 @@ async function doGenerate() {
       + (parseFloat(window.S.vendor.freight)||0)
     saveToHistory(window.S.extracted, window.S.vendor, finalTotal)
     try { localStorage.removeItem('session') } catch(e) {}
-    btn.disabled=false
+    btn.disabled=false; pdfBtn.disabled=false; backBtn.disabled=false
   } catch(e) {
+    clearTimeout(t1); clearTimeout(t2)
     prog.classList.add('hidden'); err.classList.remove('hidden')
     // Per D-06: show specific failure reason + Try Again button
     // Per D-07: Try Again button inside gen-err div
@@ -293,7 +302,7 @@ async function doGenerate() {
       err.classList.add('hidden')
       doGenerate()
     })
-    btn.disabled=false
+    btn.disabled=false; pdfBtn.disabled=false; backBtn.disabled=false
   }
 }
 
@@ -303,8 +312,13 @@ async function doGeneratePdf() {
   const btn=document.getElementById('pdf-btn')
   const prog=document.getElementById('gen-prog')
   const err=document.getElementById('gen-err')
+  const genMsg=document.getElementById('gen-msg')
+  const genBtn=document.getElementById('gen-btn')
+  const backBtn=document.getElementById('step4-back')
   err.classList.add('hidden')
-  btn.disabled=true; prog.classList.remove('hidden'); err.classList.add('hidden')
+  btn.disabled=true; genBtn.disabled=true; backBtn.disabled=true
+  prog.classList.remove('hidden'); err.classList.add('hidden')
+  genMsg.textContent = 'Rendering PDF...'
   try {
     const html=buildQuoteHTML(true)
     const sol=(window.S.extracted.solicitation_number||'Quote').replace(/[^A-Za-z0-9\-_]/g,'_')
@@ -335,8 +349,9 @@ async function doGeneratePdf() {
       err.classList.add('hidden')
       doGeneratePdf()
     })
+    genBtn.disabled=false; backBtn.disabled=false
   }
-  btn.disabled=false
+  btn.disabled=false; genBtn.disabled=false; backBtn.disabled=false
 }
 
 // ── START OVER ────────────────────────────────────────────────────────────────
