@@ -31,6 +31,7 @@ Upload a solicitation, get a professional quote back — fast and accurately, wi
 - [ ] Reliability fixes (scope truncation warnings, CSV import validation, SAM.gov field mapping)
 - [ ] Backend robustness (extraction confidence scores, timeout handling, error recovery)
 - [x] Professional polish — error states complete (Phase 6): specific parse/generation error messages, SAM.gov doSamLookup implemented, form validation gates, error.html tokenized
+- [x] Loading & progress feedback complete (Phase 7): multi-stage DOCX labels (Building→Formatting→Finalizing), PDF "Rendering PDF..." label, cross-button/back-button disable guards during async ops, CSS token audit confirmed all loading UI compliant
 
 ### Out of Scope
 
@@ -64,4 +65,4 @@ Upload a solicitation, get a professional quote back — fast and accurately, wi
 | Add extraction confidence scoring | Regex extraction has variable quality; user needs signal when to review manually | — Pending |
 
 ---
-*Last updated: 2026-03-22 — Phase 6 complete: error states — specific failure messages, SAM.gov lookup wired, form validation gates*
+*Last updated: 2026-03-23 — Phase 7 complete: loading & progress feedback — multi-stage generation labels, cross-button guards, CSS token audit*
