@@ -12,7 +12,7 @@ This roadmap elevates an existing, working Electron + Python desktop app to prod
 - [x] **Phase 4: CSS Design Tokens** - Establish color, spacing, and typography token system with consistent application throughout (completed 2026-03-22)
 - [x] **Phase 5: Interactive States & Theming** - Consistent hover/focus/active states, button variants, and scoped theme tokens (completed 2026-03-22 — absorbed into Phase 4)
 - [ ] **Phase 6: Error States** - Actionable error messages for parse failures, quote generation, SAM.gov lookups, startup, and form validation
-- [ ] **Phase 7: Loading & Progress Feedback** - Progress indicators and disabled-button guards for all async operations
+- [x] **Phase 7: Loading & Progress Feedback** - Progress indicators and disabled-button guards for all async operations (completed 2026-03-23)
 - [ ] **Phase 8: Data Quality & Extraction Trust Layer** - Scope truncation warnings, SAM.gov field mapping, CSV validation, full extraction confidence scoring system (global + per-field scores, structured flag output, zoom-to-region UI), and NAICS/PSC format validation
 - [ ] **Phase 9: Reliability & Config** - Configurable port, zombie-process prevention, upload timeout, and production app ID
 
@@ -161,6 +161,6 @@ Plans:
 | 4. CSS Design Tokens | 4/4 | Complete | 2026-03-22 |
 | 5. Interactive States & Theming | 0/0 | Complete (absorbed into Phase 4) | 2026-03-22 |
 | 6. Error States | 2/3 | In Progress|  |
-| 7. Loading & Progress Feedback | 0/TBD | Not started | - |
+| 7. Loading & Progress Feedback | 2/2 | Complete   | 2026-03-23 |
 | 8. Data Quality | 0/TBD | Not started | - |
 | 9. Reliability & Config | 0/TBD | Not started | - |
