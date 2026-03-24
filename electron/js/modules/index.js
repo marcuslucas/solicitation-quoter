@@ -567,10 +567,11 @@ function resumeSession() {
   window.S.vendor = Object.assign(window.S.vendor, sess.vendor || {})
   window.S.items = sess.items || []
   window.S.done = new Set(sess.done || [])
-  // confidence/sourceFile are not persisted — step 2 renders gracefully without them
+  // sourceType is persisted so the PDF button renders correctly on resume
+  // sourceFile (File object) cannot be serialized — PDF viewer shows message if clicked
   window.S.confidence = null
   window.S.sourceFile = null
-  window.S.sourceType = null
+  window.S.sourceType = sess.sourceType || null
   delete window.S._pendingSession
   goTo(sess.step || 2)
 }

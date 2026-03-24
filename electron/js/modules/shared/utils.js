@@ -111,7 +111,7 @@ function startOver() {
 // ── NAV ───────────────────────────────────────────────────────────────────────
 function goTo(n) {
   try {
-    const sess = {step:n, done:[...S.done], extracted:S.extracted, vendor:S.vendor, items:S.items}
+    const sess = {step:n, done:[...S.done], extracted:S.extracted, vendor:S.vendor, items:S.items, sourceType:S.sourceType||null}
     localStorage.setItem('session', JSON.stringify(sess))
   } catch(e) {}
   S.step = n
