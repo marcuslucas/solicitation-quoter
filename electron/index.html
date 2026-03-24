@@ -279,6 +279,11 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
 .field-confidence{display:flex;align-items:center;gap:var(--space-xs);margin-top:3px;font-size:var(--text-sm)}
 .field-confidence .conf-pct{color:var(--color-error);font-weight:600}
 .field-confidence .conf-issue{color:var(--color-text-muted)}
+/* Phase 8: PDF Viewer Panel */
+.pdf-viewer-panel{overflow:hidden;transition:height 0.2s ease;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);margin-top:var(--space-md)}
+.pdf-viewer-panel.collapsed{height:0;border:none}
+.pdf-viewer-panel.expanded{height:480px}
+.pdf-viewer-panel canvas{width:100%;display:block}
 
 /* ── PREFLIGHT CHECKLIST ─────────────────────────────────────────────────── */
 .preflight{border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg);font-size:12px}
@@ -687,5 +692,10 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
 <script src="js/modules/step3.js"></script>
 <script src="js/modules/step4.js"></script>
 <script src="js/modules/index.js"></script>
+<script>
+  // PDF.js local bundle paths — loaded dynamically in step2.js via import()
+  window._pdfjsPath = './vendor/pdfjs/pdf.mjs'
+  window._pdfjsWorkerPath = './vendor/pdfjs/pdf.worker.mjs'
+</script>
 </body>
 </html>
