@@ -41,13 +41,16 @@ async function renderPdfPage(pageNum) {
   const page = await _pdfDoc.getPage(pageNum)
   const canvas = document.getElementById('pdf-canvas')
   if (!canvas) return
-  // Wait for CSS transition/layout to complete before measuring width
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  // Wait for CSS height transition to complete (0.2s) before measuring width
+  await new Promise(resolve => setTimeout(resolve, 220))
   const ctx = canvas.getContext('2d')
-  // Scale to fit panel width — fall back to main content area width if panel not yet laid out
-  const panelWidth = (canvas.parentElement?.offsetWidth || 0) > 50
-    ? canvas.parentElement.offsetWidth
-    : (document.querySelector('.content')?.offsetWidth || document.querySelector('.card')?.offsetWidth || 600)
+  // Use panel offsetWidth; if still 0, walk up to the nearest card for width
+  let panelWidth = canvas.parentElement?.offsetWidth || 0
+  if (panelWidth < 10) {
+    let el = canvas.parentElement?.parentElement
+    while (el && panelWidth < 10) { panelWidth = el.offsetWidth; el = el.parentElement }
+  }
+  panelWidth = panelWidth || 600
   const unscaledViewport = page.getViewport({ scale: 1 })
   const scale = panelWidth / unscaledViewport.width
   const viewport = page.getViewport({ scale })
@@ -82,7 +85,12 @@ window.scrollPdfToBoundingBox = async function(bbox) {
   if (!canvas) return
   const page = await _pdfDoc.getPage(bbox.page)
   const unscaledViewport = page.getViewport({ scale: 1 })
-  const panelWidth = canvas.parentElement?.offsetWidth || 600
+  let panelWidth = canvas.parentElement?.offsetWidth || 0
+  if (panelWidth < 10) {
+    let el = canvas.parentElement?.parentElement
+    while (el && panelWidth < 10) { panelWidth = el.offsetWidth; el = el.parentElement }
+  }
+  panelWidth = panelWidth || 600
   const scale = panelWidth / unscaledViewport.width
   // pdfplumber y0 is from top; PDF.js viewport also measures from top
   const scrollY = bbox.y0 * scale - 50 // 50px offset to show context above
