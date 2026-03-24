@@ -120,6 +120,19 @@ async function doParse() {
     if (!data.success) throw new Error(data.error || 'Extraction failed')
     p(100, 'Done!')
     window.S.extracted = data.data
+    // Store confidence data for step 2 rendering (Phase 8)
+    window.S.confidence = {
+      overallConfidence: data.overallConfidence || null,
+      fields: data.fields || [],
+      flags: data.flags || []
+    }
+    // Store source file type for PDF viewer visibility check
+    const _srcName = window.S.file ? window.S.file.name : (window.S.filePath ? window.S.filePath.split(/[/\\]/).pop() : '')
+    window.S.sourceType = _srcName.toLowerCase().endsWith('.pdf') ? 'pdf'
+      : (_srcName.toLowerCase().endsWith('.docx') || _srcName.toLowerCase().endsWith('.doc')) ? 'docx'
+      : 'txt'
+    // Store source file reference for PDF viewer (Plan 05)
+    window.S.sourceFile = window.S.file
     // Populate line items immediately from parse result
     const aiItems = Array.isArray(data.data.ai_line_items) ? data.data.ai_line_items.filter(i=>i&&typeof i==='object') : []
     if (aiItems.length) {
