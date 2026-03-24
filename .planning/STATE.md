@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Ready to execute
-stopped_at: Completed 08-01-PLAN.md — validator.py confidence scoring module and tests
-last_updated: "2026-03-24T00:36:12.202Z"
+stopped_at: Completed 08-03-PLAN.md — validator wired into /parse, scope truncation signaled, SAM null guard applied
+last_updated: "2026-03-24T02:41:46.212Z"
 progress:
   total_phases: 9
   completed_phases: 4
   total_plans: 23
-  completed_plans: 16
+  completed_plans: 19
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-17)
 ## Current Position
 
 Phase: 08 (data-quality-extraction-trust-layer) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Plan: 3 of 6
 | Phase 07-loading-progress-feedback P02 | 3 | 1 tasks | 0 files |
 | Phase 08-data-quality-extraction-trust-layer P02 | 2 | 1 tasks | 1 files |
 | Phase 08 P01 | 2 | 2 tasks | 2 files |
+| Phase 08 P03 | 10 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -102,6 +103,9 @@ Recent decisions affecting current work:
 - [Phase 08]: CONFIDENCE_THRESHOLD = 95 at module level (D-17 / DATA-04c) in validator.py
 - [Phase 08]: SCORED_FIELDS explicit list in validator.py prevents internal keys (_method, scope_truncated) from being scored as extraction fields
 - [Phase 08]: scope_truncated is a pass-through metadata key — validator does not score it; extractor sets it, plan 08-02 will wire it through /parse response
+- [Phase 08-03]: SCOPE_MAX exported from extractor.py and imported into server.py — single constant for both parse paths
+- [Phase 08-03]: Bounding box extraction is best-effort with swallowed exceptions — non-critical enhancement must not block /parse (D-26)
+- [Phase 08-03]: or "" null guard applied to all 9 SAM.gov opp.get() fields — prevents None string literals from SAM API explicit null values
 
 ### Pending Todos
 
@@ -122,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T00:36:12.197Z
-Stopped at: Completed 08-01-PLAN.md — validator.py confidence scoring module and tests
+Last session: 2026-03-24T02:41:46.208Z
+Stopped at: Completed 08-03-PLAN.md — validator wired into /parse, scope truncation signaled, SAM null guard applied
 Resume file: None
