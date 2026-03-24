@@ -282,8 +282,9 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
 /* Phase 8: PDF Viewer Panel */
 .pdf-viewer-panel{overflow:hidden;transition:height 0.2s ease;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);margin-top:var(--space-md)}
 .pdf-viewer-panel.collapsed{height:0;border:none}
-.pdf-viewer-panel.expanded{height:480px}
-.pdf-viewer-panel canvas{width:100%;display:block}
+.pdf-viewer-panel.expanded{height:480px;overflow-y:auto}
+#pdf-pages-container{position:relative}
+#pdf-pages-container canvas{width:100%;display:block;margin-bottom:8px}
 
 /* ── PREFLIGHT CHECKLIST ─────────────────────────────────────────────────── */
 .preflight{border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:var(--space-md) var(--space-lg);margin-bottom:var(--space-lg);font-size:12px}
