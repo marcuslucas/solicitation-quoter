@@ -582,6 +582,19 @@ function dismissSession() {
   window.render(1)
 }
 
+function clearExtracted() {
+  // Reset all extracted field values to empty — user wants to start fresh
+  if (window.S.extracted) {
+    const method = window.S.extracted._method  // preserve extraction method badge
+    Object.keys(window.S.extracted).forEach(k => {
+      if (k !== '_method') window.S.extracted[k] = ''
+    })
+    window.S.extracted._method = method
+  }
+  window.S.confidence = null  // clear confidence indicators too
+  goTo(2)  // re-render step 2 with cleared fields
+}
+
 // Expose settings/modal functions globally so step modules and keyboard shortcuts can call them
 window.openSettings = openSettings
 window.closeSettings = closeSettings
@@ -599,6 +612,7 @@ window.closeProfiles = closeProfiles
 window.exportData = exportData
 window.resumeSession = resumeSession
 window.dismissSession = dismissSession
+window.clearExtracted = clearExtracted
 
 bootstrap()
 init()
