@@ -153,9 +153,28 @@ function parseCsvLine(line) {
   return fields
 }
 
+const EXPECTED_HEADERS = ['description', 'size/type', 'uom', 'qty', 'unit price']
+
+function validateCsvHeaders(firstCols) {
+  // Case-insensitive comparison per D-08
+  const normalized = firstCols.map(c => c.toLowerCase().trim())
+  const mismatches = []
+  EXPECTED_HEADERS.forEach((expected, i) => {
+    if (i < normalized.length) {
+      if (normalized[i] !== expected) {
+        mismatches.push({ col: i + 1, expected, actual: normalized[i] })
+      }
+    } else {
+      mismatches.push({ col: i + 1, expected, actual: '(missing)' })
+    }
+  })
+  return mismatches
+}
+
 function doImportCsv() {
   const raw = document.getElementById('csv-paste').value.trim()
   const errEl = document.getElementById('csv-err')
+  errEl.classList.add('hidden')
   if (!raw) {
     errEl.innerHTML = '<div class="alert alert-error">Paste CSV text or pick a file first.</div>'
     errEl.classList.remove('hidden')
@@ -169,8 +188,36 @@ function doImportCsv() {
     return
   }
 
-  const firstCols = parseCsvLine(lines[0]).map(c => c.toLowerCase())
-  const hasHeader = firstCols.some(c => ['description', 'desc', 'item', 'name', 'product'].includes(c))
+  const firstCols = parseCsvLine(lines[0])
+  const normalizedFirst = firstCols.map(c => c.toLowerCase().trim())
+
+  // Check if first row looks like a header (contains any recognizable column name)
+  const hasHeader = normalizedFirst.some(c =>
+    ['description', 'desc', 'item', 'name', 'product', 'size/type', 'uom', 'qty', 'unit price'].includes(c)
+  )
+
+  if (hasHeader) {
+    // Validate header columns strictly per D-08
+    const mismatches = validateCsvHeaders(firstCols)
+    if (mismatches.length > 0) {
+      const actualStr = firstCols.map(c => c.trim()).join(', ')
+      const detail = mismatches.map(m =>
+        `Check column ${m.col}: expected '${m.expected}', got '${m.actual}'`
+      ).join('. ')
+      errEl.innerHTML = `<div class="alert alert-error">Expected columns: Description, Size/Type, UOM, Qty, Unit Price &mdash; found: ${window.esc(actualStr)}. ${detail}.</div>`
+      errEl.classList.remove('hidden')
+      return
+    }
+  } else {
+    // No header detected — validate column count per D-12
+    const sampleCols = parseCsvLine(lines[0])
+    if (sampleCols.length !== 5) {
+      errEl.innerHTML = `<div class="alert alert-error">Expected 5 columns (Description, Size/Type, UOM, Qty, Unit Price) but found ${sampleCols.length} columns. Add a header row or ensure data has exactly 5 columns.</div>`
+      errEl.classList.remove('hidden')
+      return
+    }
+  }
+
   const dataLines = hasHeader ? lines.slice(1) : lines
 
   const imported = []
