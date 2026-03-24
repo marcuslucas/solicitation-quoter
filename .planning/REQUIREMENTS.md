@@ -49,10 +49,10 @@
 
 - [ ] **DATA-01**: Scope of work truncation visible to user — warning shown when text was cut, with option to view full
 - [ ] **DATA-02**: SAM.gov field mapping fixed — all returned fields correctly mapped to solicitation model
-- [ ] **DATA-03**: CSV import validates column headers and data types; shows specific error on mismatch
-- [ ] **DATA-04a**: Backend extraction validation layer computes a global accuracy score (0–100%) and per-field confidence score (0–100%) after parsing; validation logic checks for missing values, malformed data, format mismatches (dates, codes, numbers), and inconsistencies between related fields; logic is separated from parsing into its own module
+- [x] **DATA-03**: CSV import validates column headers and data types; shows specific error on mismatch
+- [x] **DATA-04a**: Backend extraction validation layer computes a global accuracy score (0–100%) and per-field confidence score (0–100%) after parsing; validation logic checks for missing values, malformed data, format mismatches (dates, codes, numbers), and inconsistencies between related fields; logic is separated from parsing into its own module
 - [ ] **DATA-04b**: `/parse` response includes structured confidence output: `{ "overallConfidence": 92, "fields": [{ "name": "...", "value": "...", "confidence": 78, "status": "flagged|ok", "issue": "..." }], "flags": [{ "type": "...", "field": "...", "message": "..." }] }`; bounding box coordinates included for PDF fields where pdfplumber can provide them
-- [ ] **DATA-04c**: Auto-approval threshold defined at ≥95% overall confidence — fields above threshold pass silently; fields below threshold are flagged as "needs review"; threshold is configurable, not hardcoded
+- [x] **DATA-04c**: Auto-approval threshold defined at ≥95% overall confidence — fields above threshold pass silently; fields below threshold are flagged as "needs review"; threshold is configurable, not hardcoded
 - [ ] **DATA-04d**: Review step UI displays overall accuracy score prominently, lists all flagged fields with their confidence percentage and issue description, and allows clicking a flagged field to scroll/zoom to its location in the source PDF where bounding box data is available
 - [ ] **DATA-05**: NAICS and PSC codes validated against known format (5-6 digits) before accepting
 
@@ -119,10 +119,10 @@
 | LOAD-04 | Phase 7 | Complete |
 | DATA-01 | Phase 8 | Pending |
 | DATA-02 | Phase 8 | Pending |
-| DATA-03 | Phase 8 | Pending |
-| DATA-04a | Phase 8 | Pending |
+| DATA-03 | Phase 8 | Complete |
+| DATA-04a | Phase 8 | Complete |
 | DATA-04b | Phase 8 | Pending |
-| DATA-04c | Phase 8 | Pending |
+| DATA-04c | Phase 8 | Complete |
 | DATA-04d | Phase 8 | Pending |
 | DATA-05 | Phase 8 | Pending |
 | REL-01 | Phase 9 | Pending |

@@ -122,7 +122,11 @@ Plans:
   2. Clicking "Generate Quote" shows a progress indicator for the full duration of document generation
   3. Triggering a SAM.gov lookup shows a spinner adjacent to the lookup button while the request is in flight
   4. All action buttons (parse, generate, lookup) are visually disabled and non-clickable while their respective operations are running — a second click does nothing
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [x] 07-01-PLAN.md — Progress indicators for parse, generate, and SAM.gov operations (LOAD-01, LOAD-02, LOAD-03, LOAD-04)
+- [x] 07-02-PLAN.md — CSS token audit for loading UI (LOAD-01, LOAD-03)
 
 ### Phase 8: Data Quality & Extraction Trust Layer
 **Goal**: Scope truncation is surfaced; SAM.gov mapping is fixed; CSV import validates headers; a modular extraction validation system computes a global accuracy score (0-100%) and per-field confidence scores with structured flag output, auto-approval thresholds, and a UI that shows overall accuracy and lets the operator click a flagged field to zoom to its location in the source PDF; NAICS/PSC codes are format-validated
@@ -136,7 +140,15 @@ Plans:
   5. The review step displays the overall accuracy score (e.g., "92% confidence") at the top; flagged fields are visually distinguished with their confidence percentage and issue; clicking a flagged field scrolls the embedded PDF view to that field's bounding box region where coordinates are available
   6. A parse that returns `overallConfidence >= 95` advances without any review prompts; a parse below threshold highlights the review panel automatically
   7. Typing a 3-digit value in the NAICS or PSC code field shows an inline format error before the user can proceed
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Test scaffold + validator.py confidence scoring module (DATA-04a, DATA-04c)
+- [ ] 08-02-PLAN.md — CSV header validation in step3.js doImportCsv() (DATA-03)
+- [ ] 08-03-PLAN.md — Backend wiring: scope truncation signal, SAM null guard, /parse confidence response (DATA-01, DATA-02, DATA-04b)
+- [ ] 08-04-PLAN.md — Step 2 UI: confidence badge, flagged fields, scope truncation banner, NAICS/PSC validation (DATA-01, DATA-04d, DATA-05)
+- [ ] 08-05-PLAN.md — PDF.js viewer integration: local bundle, collapsible panel, scroll-to-region (DATA-04d)
+- [ ] 08-06-PLAN.md — Human verification checkpoint for all Phase 8 features
 
 ### Phase 9: Reliability & Config
 **Goal**: Port is configurable via environment variable throughout the stack, the Windows zombie-process bug is closed, uploads time out cleanly, and the app ID is set to its production value
@@ -162,5 +174,5 @@ Plans:
 | 5. Interactive States & Theming | 0/0 | Complete (absorbed into Phase 4) | 2026-03-22 |
 | 6. Error States | 2/3 | In Progress|  |
 | 7. Loading & Progress Feedback | 2/2 | Complete   | 2026-03-23 |
-| 8. Data Quality | 0/TBD | Not started | - |
+| 8. Data Quality | 0/6 | Planned    |  |
 | 9. Reliability & Config | 0/TBD | Not started | - |

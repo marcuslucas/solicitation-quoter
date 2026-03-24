@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 07-02-PLAN.md — CSS token audit for loading UI (LOAD-01, LOAD-03)
-last_updated: "2026-03-23T18:47:59.045Z"
+status: Ready to execute
+stopped_at: Completed 08-01-PLAN.md — validator.py confidence scoring module and tests
+last_updated: "2026-03-24T00:36:12.202Z"
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 17
+  total_plans: 23
   completed_plans: 16
 ---
 
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-17)
 
 **Core value:** Upload a solicitation, get a professional quote back — fast and accurately, with minimal manual editing.
-**Current focus:** Phase 07 — loading-progress-feedback
+**Current focus:** Phase 08 — data-quality-extraction-trust-layer
 
 ## Current Position
 
-Phase: 8
-Plan: Not started
+Phase: 08 (data-quality-extraction-trust-layer) — EXECUTING
+Plan: 3 of 6
 
 ## Performance Metrics
 
@@ -59,6 +59,8 @@ Plan: Not started
 | Phase 06-error-states P03 | 2 | 2 tasks | 3 files |
 | Phase 07-loading-progress-feedback P01 | 4 | 2 tasks | 1 files |
 | Phase 07-loading-progress-feedback P02 | 3 | 1 tasks | 0 files |
+| Phase 08-data-quality-extraction-trust-layer P02 | 2 | 1 tasks | 1 files |
+| Phase 08 P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -96,6 +98,10 @@ Recent decisions affecting current work:
 - [Phase 06-error-states]: window.validateStepN convention: next() looks up window['validateStep' + S.step] dynamically — each step module self-registers its validator, zero coupling to utils.js
 - [Phase 07-loading-progress-feedback]: timer-based stage transitions (1s/3s) for DOCX gen — no server streaming needed; genMsg scoped inside functions consistent with existing pattern; clearTimeout before save dialog for stale-label prevention
 - [Phase 07-02]: Token audit confirmed: all three loading elements (parse-prog, gen-prog, sam-prog) were already compliant — no code changes required
+- [Phase 08-02]: EXPECTED_HEADERS defined as module-level constant in step3.js — easy to update without searching doImportCsv internals
+- [Phase 08]: CONFIDENCE_THRESHOLD = 95 at module level (D-17 / DATA-04c) in validator.py
+- [Phase 08]: SCORED_FIELDS explicit list in validator.py prevents internal keys (_method, scope_truncated) from being scored as extraction fields
+- [Phase 08]: scope_truncated is a pass-through metadata key — validator does not score it; extractor sets it, plan 08-02 will wire it through /parse response
 
 ### Pending Todos
 
@@ -116,6 +122,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T18:41:34.828Z
-Stopped at: Completed 07-02-PLAN.md — CSS token audit for loading UI (LOAD-01, LOAD-03)
+Last session: 2026-03-24T00:36:12.197Z
+Stopped at: Completed 08-01-PLAN.md — validator.py confidence scoring module and tests
 Resume file: None
