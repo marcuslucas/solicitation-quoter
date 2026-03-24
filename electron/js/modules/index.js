@@ -560,6 +560,27 @@ async function init() {
   window.render(1)
 }
 
+function resumeSession() {
+  const sess = window.S._pendingSession
+  if (!sess) return
+  window.S.extracted = sess.extracted || {}
+  window.S.vendor = Object.assign(window.S.vendor, sess.vendor || {})
+  window.S.items = sess.items || []
+  window.S.done = new Set(sess.done || [])
+  // confidence/sourceFile are not persisted — step 2 renders gracefully without them
+  window.S.confidence = null
+  window.S.sourceFile = null
+  window.S.sourceType = null
+  delete window.S._pendingSession
+  goTo(sess.step || 2)
+}
+
+function dismissSession() {
+  delete window.S._pendingSession
+  try { localStorage.removeItem('session') } catch(e) {}
+  window.render(1)
+}
+
 // Expose settings/modal functions globally so step modules and keyboard shortcuts can call them
 window.openSettings = openSettings
 window.closeSettings = closeSettings
@@ -575,6 +596,8 @@ window.doSamLookup = doSamLookup
 window.openProfiles = openProfiles
 window.closeProfiles = closeProfiles
 window.exportData = exportData
+window.resumeSession = resumeSession
+window.dismissSession = dismissSession
 
 bootstrap()
 init()

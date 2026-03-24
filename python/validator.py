@@ -108,9 +108,10 @@ def validate_fields(data: dict, source_type: str = "unknown") -> dict:
                 status = "flagged"
                 issue = "Required field not found"
             else:
-                confidence = 40
-                status = "flagged"
-                issue = "Field not extracted"
+                # Optional field not in document — don't flag, just note as absent
+                confidence = 100
+                status = "absent"
+                issue = None
         else:
             # Field has a value — check format rules
             str_value = str(raw_value)
@@ -138,16 +139,19 @@ def validate_fields(data: dict, source_type: str = "unknown") -> dict:
         })
 
     # Weighted overall confidence: critical fields weight=2, others weight=1
+    # Absent (optional, not in document) fields are excluded — not a quality signal
     total_weight = 0
     weighted_sum = 0
     for entry in field_entries:
+        if entry["status"] == "absent":
+            continue
         weight = 2 if entry["name"] in CRITICAL_FIELDS else 1
         weighted_sum += entry["confidence"] * weight
         total_weight += weight
 
     overall = round(weighted_sum / total_weight) if total_weight > 0 else 0
 
-    # Build flags list from flagged entries
+    # Build flags list from flagged entries only (not absent)
     flags_list = []
     for entry in field_entries:
         if entry["status"] == "flagged":

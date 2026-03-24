@@ -75,8 +75,8 @@ def test_parse_response_structure():
             assert key in entry, (
                 f"Field entry missing key '{key}': {entry}"
             )
-        assert entry["status"] in ("ok", "flagged"), (
-            f"status must be 'ok' or 'flagged', got {entry['status']!r}"
+        assert entry["status"] in ("ok", "flagged", "absent"), (
+            f"status must be 'ok', 'flagged', or 'absent', got {entry['status']!r}"
         )
         assert isinstance(entry["confidence"], int), (
             f"confidence must be int, got {type(entry['confidence'])}"

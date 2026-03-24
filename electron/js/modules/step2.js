@@ -16,7 +16,11 @@ async function loadPdfViewer() {
 
     // Get the source file as ArrayBuffer
     const file = window.S.sourceFile
-    if (!file) return
+    if (!file) {
+      const panel = document.getElementById('pdf-viewer-panel')
+      if (panel) panel.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">PDF preview requires re-uploading the document in this session.</div>'
+      return
+    }
     const arrayBuffer = await file.arrayBuffer()
 
     // Load PDF document
@@ -37,9 +41,13 @@ async function renderPdfPage(pageNum) {
   const page = await _pdfDoc.getPage(pageNum)
   const canvas = document.getElementById('pdf-canvas')
   if (!canvas) return
+  // Wait for CSS transition/layout to complete before measuring width
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
   const ctx = canvas.getContext('2d')
-  // Scale to fit panel width
-  const panelWidth = canvas.parentElement?.offsetWidth || 600
+  // Scale to fit panel width — fall back to main content area width if panel not yet laid out
+  const panelWidth = (canvas.parentElement?.offsetWidth || 0) > 50
+    ? canvas.parentElement.offsetWidth
+    : (document.querySelector('.content')?.offsetWidth || document.querySelector('.card')?.offsetWidth || 600)
   const unscaledViewport = page.getViewport({ scale: 1 })
   const scale = panelWidth / unscaledViewport.width
   const viewport = page.getViewport({ scale })
