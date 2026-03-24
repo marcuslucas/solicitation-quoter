@@ -143,9 +143,9 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Test scaffold + validator.py confidence scoring module (DATA-04a, DATA-04c)
-- [ ] 08-02-PLAN.md — CSV header validation in step3.js doImportCsv() (DATA-03)
-- [ ] 08-03-PLAN.md — Backend wiring: scope truncation signal, SAM null guard, /parse confidence response (DATA-01, DATA-02, DATA-04b)
+- [x] 08-01-PLAN.md — Test scaffold + validator.py confidence scoring module (DATA-04a, DATA-04c)
+- [x] 08-02-PLAN.md — CSV header validation in step3.js doImportCsv() (DATA-03)
+- [x] 08-03-PLAN.md — Backend wiring: scope truncation signal, SAM null guard, /parse confidence response (DATA-01, DATA-02, DATA-04b)
 - [ ] 08-04-PLAN.md — Step 2 UI: confidence badge, flagged fields, scope truncation banner, NAICS/PSC validation (DATA-01, DATA-04d, DATA-05)
 - [ ] 08-05-PLAN.md — PDF.js viewer integration: local bundle, collapsible panel, scroll-to-region (DATA-04d)
 - [ ] 08-06-PLAN.md — Human verification checkpoint for all Phase 8 features
@@ -174,5 +174,5 @@ Plans:
 | 5. Interactive States & Theming | 0/0 | Complete (absorbed into Phase 4) | 2026-03-22 |
 | 6. Error States | 2/3 | In Progress|  |
 | 7. Loading & Progress Feedback | 2/2 | Complete   | 2026-03-23 |
-| 8. Data Quality | 0/6 | Planned    |  |
+| 8. Data Quality | 3/6 | In Progress|  |
 | 9. Reliability & Config | 0/TBD | Not started | - |
