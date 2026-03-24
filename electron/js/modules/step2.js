@@ -5,9 +5,94 @@
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SCOPE_MAX_DISPLAY = '3,000'
 
+// ── PDF VIEWER STATE ──────────────────────────────────────────────────────────
+let _pdfDoc = null
+
+async function loadPdfViewer() {
+  try {
+    // Dynamic import of PDF.js — use window path variable for Electron file:// compatibility
+    let pdfjsLib = window.pdfjsLib
+    if (!pdfjsLib) {
+      const pdfPath = (window._pdfjsPath) || './vendor/pdfjs/pdf.mjs'
+      pdfjsLib = await import(pdfPath)
+      const workerPath = (window._pdfjsWorkerPath) || './vendor/pdfjs/pdf.worker.mjs'
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath
+      window.pdfjsLib = pdfjsLib
+    }
+
+    // Get the source file as ArrayBuffer
+    const file = window.S.sourceFile
+    if (!file) return
+    const arrayBuffer = await file.arrayBuffer()
+
+    // Load PDF document
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
+    _pdfDoc = await loadingTask.promise
+
+    // Render first page
+    await renderPdfPage(1)
+  } catch (err) {
+    console.error('PDF viewer load error:', err)
+    const panel = document.getElementById('pdf-viewer-panel')
+    if (panel) panel.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">Could not load PDF preview.</div>'
+  }
+}
+
+async function renderPdfPage(pageNum) {
+  if (!_pdfDoc) return
+  const page = await _pdfDoc.getPage(pageNum)
+  const canvas = document.getElementById('pdf-canvas')
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')
+  // Scale to fit panel width
+  const panelWidth = canvas.parentElement?.offsetWidth || 600
+  const unscaledViewport = page.getViewport({ scale: 1 })
+  const scale = panelWidth / unscaledViewport.width
+  const viewport = page.getViewport({ scale })
+  canvas.height = viewport.height
+  canvas.width = viewport.width
+  await page.render({ canvasContext: ctx, viewport }).promise
+}
+
+window.scrollPdfToBoundingBox = async function(bbox) {
+  // bbox: { page, x0, y0, x1, y1 }
+  if (!bbox || !bbox.page) return
+
+  const pdfPanel = document.getElementById('pdf-viewer-panel')
+  const pdfToggle = document.getElementById('pdf-toggle-btn')
+
+  // Expand panel if collapsed (D-25)
+  if (pdfPanel && pdfPanel.classList.contains('collapsed')) {
+    pdfPanel.classList.remove('collapsed')
+    pdfPanel.classList.add('expanded')
+    if (pdfToggle) pdfToggle.textContent = 'Hide PDF'
+    if (!_pdfDoc) await loadPdfViewer()
+  }
+
+  if (!_pdfDoc) return
+
+  // Navigate to the correct page
+  await renderPdfPage(bbox.page)
+
+  // Scroll canvas container to approximate y position
+  // pdfplumber coordinates: y0 is distance from top of page in points (72 dpi)
+  const canvas = document.getElementById('pdf-canvas')
+  if (!canvas) return
+  const page = await _pdfDoc.getPage(bbox.page)
+  const unscaledViewport = page.getViewport({ scale: 1 })
+  const panelWidth = canvas.parentElement?.offsetWidth || 600
+  const scale = panelWidth / unscaledViewport.width
+  // pdfplumber y0 is from top; PDF.js viewport also measures from top
+  const scrollY = bbox.y0 * scale - 50 // 50px offset to show context above
+  if (pdfPanel) {
+    pdfPanel.scrollTop = Math.max(0, scrollY)
+  }
+}
+
 // ── STEP 2 RENDER ─────────────────────────────────────────────────────────────
 
 function step2(c) {
+  _pdfDoc = null  // Reset PDF doc reference on re-render
   const d = window.S.extracted
   const m = d._method||'rules'
   const badge = m === 'demo'
@@ -84,6 +169,16 @@ function step2(c) {
     <div style="font-size:11px;color:var(--color-text-muted);margin-top:8px">These will pre-fill your quote line items.</div>
   </div>` : ''
 
+  // PDF viewer panel per D-24, D-27 — only for PDF sources
+  const isPdf = window.S.sourceType === 'pdf'
+  const pdfPanelHtml = isPdf ? `
+    <div class="card">
+      <button class="btn btn-sm" id="pdf-toggle-btn" style="text-transform:uppercase;letter-spacing:0.6px;font-weight:600;font-size:var(--text-base)">View PDF Source</button>
+      <div id="pdf-viewer-panel" class="pdf-viewer-panel collapsed">
+        <canvas id="pdf-canvas"></canvas>
+      </div>
+    </div>` : ''
+
   // Scope truncation banner per D-01, D-02, D-03
   const scopeTruncated = d.scope_truncated === true
   const scopeBanner = scopeTruncated
@@ -108,6 +203,7 @@ function step2(c) {
     ${scopeFullBlock}
   </div>
   ${qhtml}
+  ${pdfPanelHtml}
   <div class="btn-row">
     <button class="btn btn-ghost" style="margin-right:auto" id="step2-clear-btn">Clear Fields</button>
     <button class="btn btn-ghost" id="step2-back-btn">&#x2190; Back</button>
@@ -142,6 +238,29 @@ function step2(c) {
       const isHidden = fullBlock.classList.contains('hidden')
       fullBlock.classList.toggle('hidden')
       expandBtn.textContent = isHidden ? 'Collapse full text' : 'View full text'
+    })
+  }
+
+  // PDF viewer toggle per D-24
+  const pdfToggle = document.getElementById('pdf-toggle-btn')
+  const pdfPanel = document.getElementById('pdf-viewer-panel')
+  if (pdfToggle && pdfPanel) {
+    let pdfLoaded = false
+    pdfToggle.addEventListener('click', async () => {
+      const isCollapsed = pdfPanel.classList.contains('collapsed')
+      if (isCollapsed) {
+        pdfPanel.classList.remove('collapsed')
+        pdfPanel.classList.add('expanded')
+        pdfToggle.textContent = 'Hide PDF'
+        if (!pdfLoaded) {
+          await loadPdfViewer()
+          pdfLoaded = true
+        }
+      } else {
+        pdfPanel.classList.remove('expanded')
+        pdfPanel.classList.add('collapsed')
+        pdfToggle.textContent = 'View PDF Source'
+      }
     })
   }
 
