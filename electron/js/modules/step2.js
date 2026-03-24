@@ -71,37 +71,41 @@ window.scrollPdfToBoundingBox = async function(bbox) {
   const pdfPanel = document.getElementById('pdf-viewer-panel')
   const pdfToggle = document.getElementById('pdf-toggle-btn')
 
-  // Expand panel if collapsed (D-25)
+  // Expand panel if collapsed
   if (pdfPanel && pdfPanel.classList.contains('collapsed')) {
     pdfPanel.classList.remove('collapsed')
     pdfPanel.classList.add('expanded')
     if (pdfToggle) pdfToggle.textContent = 'Hide PDF'
-    if (!_pdfDoc) await loadPdfViewer()
+  }
+
+  // Load if not yet loaded
+  if (!_pdfDoc && !_pdfLoading) await loadPdfViewer()
+  // If load is in flight (race), wait for it to finish (10s timeout)
+  if (_pdfLoading) {
+    await new Promise(resolve => {
+      const deadline = Date.now() + 10000
+      const check = setInterval(() => {
+        if (!_pdfLoading || Date.now() > deadline) { clearInterval(check); resolve() }
+      }, 50)
+    })
   }
 
   if (!_pdfDoc) return
 
-  // Navigate to the correct page
-  await renderPdfPage(bbox.page)
+  // Find the canvas for the target page
+  const targetCanvas = document.getElementById(`pdf-page-${bbox.page}`)
+  if (!targetCanvas || !pdfPanel) return
 
-  // Scroll canvas container to approximate y position
-  // pdfplumber coordinates: y0 is distance from top of page in points (72 dpi)
-  const canvas = document.getElementById('pdf-canvas')
-  if (!canvas) return
+  // Scale: canvas.width (rendered pixels) / unscaled page width
   const page = await _pdfDoc.getPage(bbox.page)
-  const unscaledViewport = page.getViewport({ scale: 1 })
-  let panelWidth = canvas.parentElement?.offsetWidth || 0
-  if (panelWidth < 10) {
-    let el = canvas.parentElement?.parentElement
-    while (el && panelWidth < 10) { panelWidth = el.offsetWidth; el = el.parentElement }
-  }
-  panelWidth = panelWidth || 600
-  const scale = panelWidth / unscaledViewport.width
-  // pdfplumber y0 is from top; PDF.js viewport also measures from top
-  const scrollY = bbox.y0 * scale - 50 // 50px offset to show context above
-  if (pdfPanel) {
-    pdfPanel.scrollTop = Math.max(0, scrollY)
-  }
+  const scale = targetCanvas.width / page.getViewport({ scale: 1 }).width
+
+  // getBoundingClientRect is coordinate-system independent — no offsetParent dependency
+  // pdfplumber y0 is from top of page; PDF.js viewport also measures from top
+  const canvasTop = targetCanvas.getBoundingClientRect().top - pdfPanel.getBoundingClientRect().top
+  const scrollTop = pdfPanel.scrollTop + canvasTop + (bbox.y0 * scale) - 50
+
+  pdfPanel.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' })
 }
 
 // ── STEP 2 RENDER ─────────────────────────────────────────────────────────────
@@ -261,17 +265,13 @@ function step2(c) {
   const pdfToggle = document.getElementById('pdf-toggle-btn')
   const pdfPanel = document.getElementById('pdf-viewer-panel')
   if (pdfToggle && pdfPanel) {
-    let pdfLoaded = false
     pdfToggle.addEventListener('click', async () => {
       const isCollapsed = pdfPanel.classList.contains('collapsed')
       if (isCollapsed) {
         pdfPanel.classList.remove('collapsed')
         pdfPanel.classList.add('expanded')
         pdfToggle.textContent = 'Hide PDF'
-        if (!pdfLoaded) {
-          await loadPdfViewer()
-          pdfLoaded = true
-        }
+        if (!_pdfDoc) await loadPdfViewer()
       } else {
         pdfPanel.classList.remove('expanded')
         pdfPanel.classList.add('collapsed')
