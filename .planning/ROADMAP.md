@@ -146,7 +146,7 @@ Plans:
 - [x] 08-01-PLAN.md — Test scaffold + validator.py confidence scoring module (DATA-04a, DATA-04c)
 - [x] 08-02-PLAN.md — CSV header validation in step3.js doImportCsv() (DATA-03)
 - [x] 08-03-PLAN.md — Backend wiring: scope truncation signal, SAM null guard, /parse confidence response (DATA-01, DATA-02, DATA-04b)
-- [ ] 08-04-PLAN.md — Step 2 UI: confidence badge, flagged fields, scope truncation banner, NAICS/PSC validation (DATA-01, DATA-04d, DATA-05)
+- [x] 08-04-PLAN.md — Step 2 UI: confidence badge, flagged fields, scope truncation banner, NAICS/PSC validation (DATA-01, DATA-04d, DATA-05)
 - [ ] 08-05-PLAN.md — PDF.js viewer integration: local bundle, collapsible panel, scroll-to-region (DATA-04d)
 - [ ] 08-06-PLAN.md — Human verification checkpoint for all Phase 8 features
 

@@ -53,8 +53,8 @@
 - [x] **DATA-04a**: Backend extraction validation layer computes a global accuracy score (0–100%) and per-field confidence score (0–100%) after parsing; validation logic checks for missing values, malformed data, format mismatches (dates, codes, numbers), and inconsistencies between related fields; logic is separated from parsing into its own module
 - [x] **DATA-04b**: `/parse` response includes structured confidence output: `{ "overallConfidence": 92, "fields": [{ "name": "...", "value": "...", "confidence": 78, "status": "flagged|ok", "issue": "..." }], "flags": [{ "type": "...", "field": "...", "message": "..." }] }`; bounding box coordinates included for PDF fields where pdfplumber can provide them
 - [x] **DATA-04c**: Auto-approval threshold defined at ≥95% overall confidence — fields above threshold pass silently; fields below threshold are flagged as "needs review"; threshold is configurable, not hardcoded
-- [ ] **DATA-04d**: Review step UI displays overall accuracy score prominently, lists all flagged fields with their confidence percentage and issue description, and allows clicking a flagged field to scroll/zoom to its location in the source PDF where bounding box data is available
-- [ ] **DATA-05**: NAICS and PSC codes validated against known format (5-6 digits) before accepting
+- [x] **DATA-04d**: Review step UI displays overall accuracy score prominently, lists all flagged fields with their confidence percentage and issue description, and allows clicking a flagged field to scroll/zoom to its location in the source PDF where bounding box data is available
+- [x] **DATA-05**: NAICS and PSC codes validated against known format (5-6 digits) before accepting
 
 ### Reliability
 
@@ -123,8 +123,8 @@
 | DATA-04a | Phase 8 | Complete |
 | DATA-04b | Phase 8 | Complete |
 | DATA-04c | Phase 8 | Complete |
-| DATA-04d | Phase 8 | Pending |
-| DATA-05 | Phase 8 | Pending |
+| DATA-04d | Phase 8 | Complete |
+| DATA-05 | Phase 8 | Complete |
 | REL-01 | Phase 9 | Pending |
 | REL-02 | Phase 9 | Pending |
 | REL-03 | Phase 9 | Pending |
