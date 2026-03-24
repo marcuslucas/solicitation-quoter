@@ -116,7 +116,10 @@ def validate_fields(data: dict, source_type: str = "unknown") -> dict:
             str_value = str(raw_value)
             if field_name in FORMAT_RULES:
                 pattern, message, flags = FORMAT_RULES[field_name]
-                if not re.search(pattern, str_value, flags):
+                # NAICS/PSC values may include description ("339113: Surgical Appliance...")
+                # Extract just the code part before the colon for format validation
+                check_value = str_value.split(':')[0].strip() if field_name in ('naics_code', 'psc_code') else str_value
+                if not re.search(pattern, check_value, flags):
                     confidence = max(10, confidence - 30)
                     status = "flagged"
                     issue = message

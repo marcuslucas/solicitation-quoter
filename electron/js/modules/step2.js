@@ -10,13 +10,9 @@ let _pdfDoc = null
 
 async function loadPdfViewer() {
   try {
-    // Dynamic import of PDF.js — use window path variable for Electron file:// compatibility
-    let pdfjsLib = window.pdfjsLib
-    if (!pdfjsLib) {
-      pdfjsLib = await import('./vendor/pdfjs/pdf.mjs')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.mjs'
-      window.pdfjsLib = pdfjsLib
-    }
+    // PDF.js initialized by js/init-pdfjs.js module script at page load
+    const pdfjsLib = window.pdfjsLib
+    if (!pdfjsLib) throw new Error('PDF.js not loaded')
 
     // Get the source file as ArrayBuffer
     const file = window.S.sourceFile
@@ -276,7 +272,8 @@ function step2(c) {
   function addBlurValidation(input, pattern, errorMsg) {
     if (!input) return
     input.addEventListener('blur', () => {
-      const val = input.value.trim()
+      // Strip description after colon (e.g. "339113: Surgical Appliance..." → "339113")
+      const val = input.value.trim().split(':')[0].trim()
       // Remove previous error
       const prev = input.parentElement.querySelector('.field-error-msg')
       if (prev) prev.remove()
