@@ -4,8 +4,9 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 
 from constants import MAX_UPLOAD_BYTES, PORT, TMP_PREFIX
-from extractor import parse_document, extract_data, extract, extract_line_items
+from extractor import parse_document, extract_data, extract, extract_line_items, SCOPE_MAX
 from generator import generate_quote
+from validator import validate_fields
 
 app = Flask(__name__)
 
@@ -129,7 +130,59 @@ def parse_route():
         if not text.strip():
             return jsonify({"error":"Could not extract text from document."}),400
         data=extract_data(text)
-        return jsonify({"success":True,"data":data})
+
+        # Determine source type from file extension
+        source_type = Path(file.filename).suffix.lower().lstrip('.')
+        if source_type in ('doc', 'docx'):
+            source_type = 'docx'
+
+        # Extract bounding boxes for PDF sources (D-18)
+        bounding_boxes = {}
+        if source_type == 'pdf':
+            try:
+                import pdfplumber
+                with pdfplumber.open(tmp_path) as pdf:
+                    for page_num, page in enumerate(pdf.pages, 1):
+                        words = page.extract_words()
+                        for field_name, field_value in data.items():
+                            if field_name.startswith('_') or not isinstance(field_value, str) or not field_value:
+                                continue
+                            if field_name in bounding_boxes:
+                                continue
+                            # Find first occurrence of field value (first 40 chars) in page words
+                            search_text = field_value[:40].lower()
+                            page_text = ' '.join(w['text'] for w in words).lower()
+                            if search_text[:20] in page_text:
+                                # Find approximate bounding box from matching words
+                                for w in words:
+                                    if w['text'].lower() in search_text:
+                                        bounding_boxes[field_name] = {
+                                            'page': page_num,
+                                            'x0': round(w['x0'], 1),
+                                            'y0': round(w['top'], 1),
+                                            'x1': round(w['x1'], 1),
+                                            'y1': round(w['bottom'], 1)
+                                        }
+                                        break
+            except Exception:
+                pass  # bounding boxes are best-effort (D-26)
+
+        # Run confidence validation (D-13, D-15)
+        confidence = validate_fields(data, source_type)
+
+        # Merge bounding boxes into confidence field entries
+        for field_entry in confidence.get('fields', []):
+            bb = bounding_boxes.get(field_entry['name'])
+            if bb:
+                field_entry['boundingBox'] = bb
+
+        return jsonify({
+            "success": True,
+            "data": data,
+            "overallConfidence": confidence["overallConfidence"],
+            "fields": confidence["fields"],
+            "flags": confidence["flags"]
+        })
     except Exception as e:
         from werkzeug.exceptions import RequestEntityTooLarge
         if isinstance(e, RequestEntityTooLarge):
@@ -186,17 +239,22 @@ def sam_lookup():
         desc=re.sub(r"\s+"," ",re.sub(r"<[^>]+>"," ",desc_raw)).strip()
 
         solicitation={
-            "solicitation_number": opp.get("solicitationNumber") or opp.get("noticeId",""),
-            "project_title":       opp.get("title",""),
-            "solicitation_type":   opp.get("type",""),
-            "issuing_agency":      opp.get("fullParentPathName",""),
-            "due_date":            opp.get("responseDeadLine",""),
-            "posting_date":        opp.get("postedDate",""),
-            "naics_code":          opp.get("naicsCode",""),
-            "psc_code":            opp.get("classificationCode",""),
-            "set_aside":           opp.get("typeOfSetAsideDescription") or opp.get("typeOfSetAside",""),
-            "scope_of_work":       desc[:3000],
+            "solicitation_number": opp.get("solicitationNumber") or opp.get("noticeId") or "",
+            "project_title":       opp.get("title") or "",
+            "solicitation_type":   opp.get("type") or "",
+            "issuing_agency":      opp.get("fullParentPathName") or "",
+            "due_date":            opp.get("responseDeadLine") or "",
+            "posting_date":        opp.get("postedDate") or "",
+            "naics_code":          opp.get("naicsCode") or "",
+            "psc_code":            opp.get("classificationCode") or "",
+            "set_aside":           opp.get("typeOfSetAsideDescription") or opp.get("typeOfSetAside") or "",
+            "scope_of_work":       desc[:SCOPE_MAX],
         }
+        if len(desc) > SCOPE_MAX:
+            solicitation["scope_truncated"] = True
+            solicitation["scope_full"] = desc
+        else:
+            solicitation["scope_truncated"] = False
         pop=opp.get("placeOfPerformance",{})
         if pop:
             city=pop.get("city",{}).get("name",""); state=pop.get("state",{}).get("code","")
