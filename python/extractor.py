@@ -4,6 +4,8 @@
 import os, re, json
 from pathlib import Path
 
+SCOPE_MAX = 3000
+
 
 def parse_pdf(filepath):
     try:
@@ -105,7 +107,13 @@ def extract(text):
 
     # Scope of work
     m = re.search(r"Description[:\s]*(.+?)(?=Contact Information|Notice Details|Attachment|\Z)", text, re.IGNORECASE|re.DOTALL)
-    d["scope_of_work"] = re.sub(r"\s+"," ", m.group(1)).strip()[:3000] if m else re.sub(r"\s+"," ",text[:2000]).strip()
+    raw_scope = re.sub(r"\s+", " ", m.group(1)).strip() if m else re.sub(r"\s+", " ", text[:SCOPE_MAX]).strip()
+    d["scope_of_work"] = raw_scope[:SCOPE_MAX]
+    if len(raw_scope) > SCOPE_MAX:
+        d["scope_truncated"] = True
+        d["scope_full"] = raw_scope
+    else:
+        d["scope_truncated"] = False
 
     # Quantities
     qtys = re.findall(r"\b(SM|S|M|L|XL|XXL|2XL|3XL)[:\s]*(\d+)", text, re.IGNORECASE)
