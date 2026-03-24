@@ -13,10 +13,8 @@ async function loadPdfViewer() {
     // Dynamic import of PDF.js — use window path variable for Electron file:// compatibility
     let pdfjsLib = window.pdfjsLib
     if (!pdfjsLib) {
-      const pdfPath = (window._pdfjsPath) || './vendor/pdfjs/pdf.mjs'
-      pdfjsLib = await import(pdfPath)
-      const workerPath = (window._pdfjsWorkerPath) || './vendor/pdfjs/pdf.worker.mjs'
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workerPath
+      pdfjsLib = await import('./vendor/pdfjs/pdf.mjs')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = './vendor/pdfjs/pdf.worker.mjs'
       window.pdfjsLib = pdfjsLib
     }
 
