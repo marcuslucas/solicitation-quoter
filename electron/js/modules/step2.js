@@ -2,6 +2,9 @@
 // Step 2: Review Extracted Data
 // Depends on: window.S (state.js), window.esc/toast/goTo/next (utils.js)
 
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const SCOPE_MAX_DISPLAY = '3,000'
+
 // ── STEP 2 RENDER ─────────────────────────────────────────────────────────────
 
 function step2(c) {
@@ -15,6 +18,25 @@ function step2(c) {
         ? '<span class="mbadge ai">SAM.gov Lookup</span>'
         : '<span class="mbadge rules">Rule-Based Extraction</span>'
 
+  // Confidence badge per D-19, D-23
+  const conf = window.S.confidence || {}
+  const oc = conf.overallConfidence
+  let confBadgeHtml = ''
+  if (oc !== null && oc !== undefined) {
+    let badgeClass, badgeLabel
+    if (oc >= 95) {
+      badgeClass = 'mbadge ai'
+      badgeLabel = `${oc}% Confidence`
+    } else if (oc >= 70) {
+      badgeClass = 'mbadge rules'
+      badgeLabel = `${oc}% Confidence &mdash; review flagged fields`
+    } else {
+      badgeClass = 'mbadge'
+      badgeLabel = `${oc}% Confidence &mdash; low accuracy, review all fields`
+    }
+    confBadgeHtml = `<div class="confidence-badge"><span class="${badgeClass}"${oc < 70 ? ' style="background:var(--color-error);color:var(--color-contrast-dark)"' : ''}>${badgeLabel}</span></div>`
+  }
+
   const fields = [
     ['solicitation_number','Solicitation #',false],['project_title','Project Title',true],
     ['solicitation_type','Type',false],['issuing_agency','Issuing Agency',false],
@@ -26,11 +48,29 @@ function step2(c) {
     ['period_of_performance','Period of Performance',false],['estimated_value','Est. Value',false],
   ]
 
-  const items = fields.map(([k,lbl,wide]) => `
-    <div class="data-item${wide?' s2':''}">
-      <div class="data-label">${lbl}</div>
-      <input data-field="${k}" value="${esc(String(d[k]||''))}" placeholder="Not found" />
-    </div>`).join('')
+  // Build flagged field lookup from confidence data
+  const flaggedFields = {}
+  if (conf.fields) {
+    conf.fields.forEach(f => {
+      if (f.status === 'flagged') {
+        flaggedFields[f.name] = f
+      }
+    })
+  }
+
+  const items = fields.map(([k, lbl, wide]) => {
+    const flagged = flaggedFields[k]
+    const invalidClass = flagged ? ' invalid' : ''
+    const flagHtml = flagged
+      ? `<div class="field-confidence"><span class="conf-pct">${flagged.confidence}% confidence</span><span class="conf-issue"> &mdash; ${esc(flagged.issue || '')}</span></div>`
+      : ''
+    return `
+      <div class="data-item${wide ? ' s2' : ''}">
+        <div class="data-label">${lbl}</div>
+        <input data-field="${k}" class="${invalidClass}" value="${esc(String(d[k] || ''))}" placeholder="Not found"${flagged && flagged.boundingBox ? ` data-bbox='${JSON.stringify(flagged.boundingBox)}'` : ''} />
+        ${flagHtml}
+      </div>`
+  }).join('')
 
   const qtys = d.quantities||[]
   const qhtml = qtys.length ? `<div class="card">
@@ -44,16 +84,28 @@ function step2(c) {
     <div style="font-size:11px;color:var(--color-text-muted);margin-top:8px">These will pre-fill your quote line items.</div>
   </div>` : ''
 
+  // Scope truncation banner per D-01, D-02, D-03
+  const scopeTruncated = d.scope_truncated === true
+  const scopeBanner = scopeTruncated
+    ? `<div class="alert alert-warn" id="scope-trunc-banner">Scope truncated at ${SCOPE_MAX_DISPLAY} characters <button class="btn btn-sm" id="scope-expand-btn" style="margin-left:var(--space-sm)">View full text</button></div>`
+    : ''
+  const scopeFullBlock = scopeTruncated
+    ? `<div id="scope-full-block" class="scope-full-text hidden">${esc(d.scope_full || d.scope_of_work || '')}</div>`
+    : ''
+
   c.innerHTML = `
   ${badge}
+  ${confBadgeHtml}
   <div class="card">
-    <div class="card-title"><span class="dot"></span>Extracted Fields <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">— click any field to edit</span></div>
+    <div class="card-title"><span class="dot"></span>Extracted Fields <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">&mdash; click any field to edit</span></div>
     <div class="data-grid">${items}</div>
   </div>
   <div class="card">
     <div class="card-title"><span class="dot"></span>Scope of Work / Description</div>
-    <textarea id="scope-ta" rows="6" maxlength="2000">${esc(d.scope_of_work||'')}</textarea>
-    <div class="char-count" id="scope-count">${(d.scope_of_work||'').length} / 2,000</div>
+    ${scopeBanner}
+    <textarea id="scope-ta" rows="6">${esc(d.scope_of_work||'')}</textarea>
+    <div class="char-count" id="scope-count">${(d.scope_of_work||'').length} / ${SCOPE_MAX_DISPLAY}</div>
+    ${scopeFullBlock}
   </div>
   ${qhtml}
   <div class="btn-row">
@@ -78,7 +130,18 @@ function step2(c) {
   if (scopeTa) {
     scopeTa.addEventListener('input', e => {
       window.S.extracted.scope_of_work = e.target.value
-      if (scopeCount) scopeCount.textContent = e.target.value.length + ' / 2,000'
+      if (scopeCount) scopeCount.textContent = e.target.value.length + ' / ' + SCOPE_MAX_DISPLAY
+    })
+  }
+
+  // Scope expand/collapse toggle per D-02, D-03
+  const expandBtn = document.getElementById('scope-expand-btn')
+  const fullBlock = document.getElementById('scope-full-block')
+  if (expandBtn && fullBlock) {
+    expandBtn.addEventListener('click', () => {
+      const isHidden = fullBlock.classList.contains('hidden')
+      fullBlock.classList.toggle('hidden')
+      expandBtn.textContent = isHidden ? 'Collapse full text' : 'View full text'
     })
   }
 
@@ -88,6 +151,44 @@ function step2(c) {
   })
   document.getElementById('step2-back-btn')?.addEventListener('click', () => goTo(1))
   document.getElementById('step2-next-btn')?.addEventListener('click', () => next())
+
+  // NAICS/PSC format validation on blur per D-29, D-30, D-31
+  const naicsInput = c.querySelector('input[data-field="naics_code"]')
+  const pscInput = c.querySelector('input[data-field="psc_code"]')
+
+  function addBlurValidation(input, pattern, errorMsg) {
+    if (!input) return
+    input.addEventListener('blur', () => {
+      const val = input.value.trim()
+      // Remove previous error
+      const prev = input.parentElement.querySelector('.field-error-msg')
+      if (prev) prev.remove()
+      input.classList.remove('invalid')
+      // Validate only if non-empty (empty = not entered, not a format error)
+      if (val && !pattern.test(val)) {
+        input.classList.add('invalid')
+        const errSpan = document.createElement('span')
+        errSpan.className = 'field-error-msg'
+        errSpan.textContent = errorMsg
+        input.parentElement.appendChild(errSpan)
+      }
+    })
+  }
+
+  addBlurValidation(naicsInput, /^\d{5,6}$/, 'NAICS code must be 5 or 6 digits (e.g. 336992)')
+  addBlurValidation(pscInput, /^[A-Z0-9]{4}$/i, 'PSC code must be 4 alphanumeric characters (e.g. 1234 or AA1B)')
+
+  // Wire flagged field click → PDF viewer scroll (Plan 05 wires the actual viewer)
+  c.querySelectorAll('input[data-bbox]').forEach(el => {
+    el.style.cursor = 'pointer'
+    el.addEventListener('click', () => {
+      const bbox = JSON.parse(el.dataset.bbox)
+      // scrollPdfToBoundingBox is defined in Plan 05; graceful no-op if not yet available
+      if (typeof window.scrollPdfToBoundingBox === 'function') {
+        window.scrollPdfToBoundingBox(bbox)
+      }
+    })
+  })
 }
 
 function init() {
