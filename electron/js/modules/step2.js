@@ -7,57 +7,62 @@ const SCOPE_MAX_DISPLAY = '3,000'
 
 // ── PDF VIEWER STATE ──────────────────────────────────────────────────────────
 let _pdfDoc = null
+let _pdfLoading = false
 
 async function loadPdfViewer() {
+  if (_pdfLoading || _pdfDoc) return
+  _pdfLoading = true
   try {
-    // PDF.js initialized by js/init-pdfjs.js module script at page load
-    const pdfjsLib = window.pdfjsLib
-    if (!pdfjsLib) throw new Error('PDF.js not loaded')
+    // Resolve container first — all messages go here so panel structure is preserved
+    const container = document.getElementById('pdf-pages-container')
+    if (!container) return
 
-    // Get the source file as ArrayBuffer
-    const file = window.S.sourceFile
-    if (!file) {
-      const panel = document.getElementById('pdf-viewer-panel')
-      if (panel) panel.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">PDF preview requires re-uploading the document in this session.</div>'
+    // Clear any stale canvases or prior error messages
+    container.innerHTML = ''
+
+    if (!window.S.sourceFile) {
+      // Note: using <div> + var(--space-md) consistent with existing codebase style
+      container.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">PDF preview requires re-uploading the document in this session.</div>'
       return
     }
-    const arrayBuffer = await file.arrayBuffer()
+    if (!window.pdfjsLib) throw new Error('PDF.js not loaded')
 
-    // Load PDF document
+    const arrayBuffer = await window.S.sourceFile.arrayBuffer()
     const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
     _pdfDoc = await loadingTask.promise
 
-    // Render first page
-    await renderPdfPage(1)
+    // Wait for CSS transition before measuring width
+    await new Promise(resolve => setTimeout(resolve, 220))
+
+    for (let i = 1; i <= _pdfDoc.numPages; i++) {
+      const page = await _pdfDoc.getPage(i)
+      const canvas = document.createElement('canvas')
+      canvas.id = `pdf-page-${i}`
+      container.appendChild(canvas)
+
+      let panelWidth = container.offsetWidth || 0
+      if (panelWidth < 10) {
+        let el = container.parentElement
+        while (el && panelWidth < 10) { panelWidth = el.offsetWidth; el = el.parentElement }
+      }
+      panelWidth = panelWidth || 600
+
+      const scale = panelWidth / page.getViewport({ scale: 1 }).width
+      const viewport = page.getViewport({ scale })
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+      const ctx = canvas.getContext('2d')
+      await page.render({ canvasContext: ctx, viewport }).promise
+    }
   } catch (err) {
     console.error('PDF viewer load error:', err)
-    const panel = document.getElementById('pdf-viewer-panel')
-    if (panel) panel.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">Could not load PDF preview.</div>'
+    const container = document.getElementById('pdf-pages-container')
+    if (container) container.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">Could not load PDF preview.</div>'  // <div> consistent with codebase style
+  } finally {
+    _pdfLoading = false
   }
 }
 
-async function renderPdfPage(pageNum) {
-  if (!_pdfDoc) return
-  const page = await _pdfDoc.getPage(pageNum)
-  const canvas = document.getElementById('pdf-canvas')
-  if (!canvas) return
-  // Wait for CSS height transition to complete (0.2s) before measuring width
-  await new Promise(resolve => setTimeout(resolve, 220))
-  const ctx = canvas.getContext('2d')
-  // Use panel offsetWidth; if still 0, walk up to the nearest card for width
-  let panelWidth = canvas.parentElement?.offsetWidth || 0
-  if (panelWidth < 10) {
-    let el = canvas.parentElement?.parentElement
-    while (el && panelWidth < 10) { panelWidth = el.offsetWidth; el = el.parentElement }
-  }
-  panelWidth = panelWidth || 600
-  const unscaledViewport = page.getViewport({ scale: 1 })
-  const scale = panelWidth / unscaledViewport.width
-  const viewport = page.getViewport({ scale })
-  canvas.height = viewport.height
-  canvas.width = viewport.width
-  await page.render({ canvasContext: ctx, viewport }).promise
-}
 
 window.scrollPdfToBoundingBox = async function(bbox) {
   // bbox: { page, x0, y0, x1, y1 }
@@ -102,7 +107,8 @@ window.scrollPdfToBoundingBox = async function(bbox) {
 // ── STEP 2 RENDER ─────────────────────────────────────────────────────────────
 
 function step2(c) {
-  _pdfDoc = null  // Reset PDF doc reference on re-render
+  _pdfDoc = null      // Reset PDF doc reference on re-render
+  _pdfLoading = false // Reset loading flag on re-render
   const d = window.S.extracted
   const m = d._method||'rules'
   const badge = m === 'demo'
@@ -185,7 +191,7 @@ function step2(c) {
     <div class="card">
       <button class="btn btn-sm" id="pdf-toggle-btn" style="text-transform:uppercase;letter-spacing:0.6px;font-weight:600;font-size:var(--text-base)">View PDF Source</button>
       <div id="pdf-viewer-panel" class="pdf-viewer-panel collapsed">
-        <canvas id="pdf-canvas"></canvas>
+        <div id="pdf-pages-container"></div>
       </div>
     </div>` : ''
 
