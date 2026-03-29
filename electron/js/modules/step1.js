@@ -89,6 +89,8 @@ async function doParse() {
   const bar  = document.getElementById('prog')
   prog.classList.remove('hidden'); err.classList.add('hidden'); btn.disabled = true
   const p = (pct, m) => { bar.style.width=pct+'%'; msg.textContent=m }
+  const controller = new AbortController()
+  const abortTimeout = setTimeout(() => controller.abort(), 30000)
   try {
     // SEC-02/SEC-03: Belt-and-suspenders file type check before upload
     const fileNameToCheck = window.S.file ? window.S.file.name : (window.S.filePath ? window.S.filePath.split(/[/\\]/).pop() : '')
@@ -110,7 +112,8 @@ async function doParse() {
       }
     } else throw new Error('No file selected')
     p(40, 'Parsing document...')
-    const r = await fetch(`http://127.0.0.1:${window.S.port}/parse`, { method:'POST', body:fd })
+    const r = await fetch(`http://127.0.0.1:${window.S.port}/parse`, { method:'POST', body:fd, signal: controller.signal })
+    clearTimeout(abortTimeout)
     if (!r.ok) {
       const errBody = await r.json().catch(() => ({}))
       throw new Error(errBody.error || `Server error (HTTP ${r.status})`)
@@ -148,6 +151,10 @@ async function doParse() {
     window.S.done.add(1)
     setTimeout(() => goTo(2), 500)
   } catch(e) {
+    clearTimeout(abortTimeout)
+    if (e.name === 'AbortError') {
+      e.message = 'Parsing timed out. The file may be too large or corrupted — try a smaller document.'
+    }
     err.classList.remove('hidden')
     let msg = e.message || 'An unknown error occurred'
     // Per D-02: distinguish specific failure scenarios
