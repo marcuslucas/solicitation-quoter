@@ -159,7 +159,11 @@ Plans:
   2. Force-killing Electron on Windows (via Task Manager) does not leave a Python process running on the port, verified by attempting to relaunch the app immediately
   3. Uploading a document where parsing takes more than 30 seconds returns a timeout error to the UI — the request does not hang indefinitely
   4. The packaged app's About dialog and installer metadata show a production app ID — the string "yourcompany" appears nowhere in the built artifact
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Port configurability via env var + production app ID (REL-01, REL-04)
+- [ ] 09-02-PLAN.md — Zombie process prevention + parse timeout (REL-02, REL-03)
 
 ## Progress
 
@@ -175,4 +179,4 @@ Plans:
 | 6. Error States | 2/3 | In Progress|  |
 | 7. Loading & Progress Feedback | 2/2 | Complete   | 2026-03-23 |
 | 8. Data Quality | 5/6 | In Progress|  |
-| 9. Reliability & Config | 0/TBD | Not started | - |
+| 9. Reliability & Config | 0/2 | Not started | - |
