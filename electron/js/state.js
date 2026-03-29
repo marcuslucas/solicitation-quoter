@@ -3,7 +3,7 @@
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
-  step: 1, done: new Set(), port: 5199,
+  step: 1, done: new Set(), port: null,
   apiKey: '', validity: '30 days',
   samKey: '', samNoticeId: '',
   file: null, filePath: null,
