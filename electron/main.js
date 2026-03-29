@@ -57,7 +57,7 @@ function startBackend(apiKey) {
   }
 
   backend = spawn(cmd, args, {
-    env: { ...process.env, PORT: String(PORT), PYTHONUNBUFFERED: '1', ...(apiKey ? { ANTHROPIC_API_KEY: apiKey } : {}) },
+    env: { ...process.env, PORT: String(PORT), PARENT_PID: String(process.pid), PYTHONUNBUFFERED: '1', ...(apiKey ? { ANTHROPIC_API_KEY: apiKey } : {}) },
     stdio: ['ignore','pipe','pipe'],
     windowsHide: true
   })

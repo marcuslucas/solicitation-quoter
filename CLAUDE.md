@@ -12,7 +12,7 @@ Electron launches and automatically spawns the Python backend.
 
 **Install dependencies (one-time setup):**
 ```
-pip install flask pdfplumber pypdf python-docx anthropic
+pip install flask pdfplumber pypdf python-docx anthropic psutil
 npm install
 ```
 
@@ -20,12 +20,12 @@ npm install
 ```
 # Windows
 pip install pyinstaller
-pyinstaller --onefile --name solicitationquoter-backend --noconsole python/server.py
+pyinstaller --onefile --name solicitationquoter-backend --noconsole --hidden-import psutil python/server.py
 rename dist dist-backend
 npm run build:win
 
 # Mac
-pyinstaller --onefile --name solicitationquoter-backend --noconsole python/server.py
+pyinstaller --onefile --name solicitationquoter-backend --noconsole --hidden-import psutil python/server.py
 mv dist dist-backend
 npm run build:mac
 ```

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, sys, json, re, tempfile, traceback, io, atexit, glob, time
+import os, sys, json, re, tempfile, traceback, io, atexit, glob, time, threading, concurrent.futures
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 
@@ -88,6 +88,19 @@ def _startup_sweep():
         print(f"[startup] Removed {removed} stale temp file(s)", flush=True)
 
 
+def _watch_parent(ppid: int):
+    """Daemon thread: self-terminate if parent Electron process has exited."""
+    import psutil
+    while True:
+        time.sleep(3)
+        try:
+            if not psutil.pid_exists(ppid):
+                print("[SolicitationQuoter] Parent exited — shutting down", flush=True)
+                os._exit(0)
+        except Exception:
+            pass  # psutil errors are non-fatal; keep polling
+
+
 @app.errorhandler(413)
 def handle_request_entity_too_large(e):
     return jsonify({"error": "File too large — maximum 50 MB"}), 413
@@ -129,10 +142,22 @@ def parse_route():
             tmp_path=tmp.name
         file.save(tmp_path)
         _active_tmp_files.add(tmp_path)
-        text=parse_document(tmp_path)
+        def _do_parse(path):
+            t = parse_document(path)
+            return t, extract_data(t)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(_do_parse, tmp_path)
+            try:
+                text, data = fut.result(timeout=30)
+            except concurrent.futures.TimeoutError:
+                # Note: on timeout, the parse worker thread continues until parse_document()
+                # finishes naturally. Temp file cleanup is handled by atexit. (Pitfall 4)
+                return jsonify({
+                    "error": "Parsing timed out after 30 seconds. The file may be too large or corrupted."
+                }), 408
         if not text.strip():
             return jsonify({"error":"Could not extract text from document."}),400
-        data=extract_data(text)
 
         # Determine source type from file extension
         source_type = Path(file.filename).suffix.lower().lstrip('.')
@@ -298,6 +323,9 @@ def sam_lookup():
 
 if __name__=="__main__":
     _startup_sweep()
+    ppid = int(os.environ.get("PARENT_PID", "0"))
+    if ppid:
+        threading.Thread(target=_watch_parent, args=(ppid,), daemon=True).start()
     port=int(os.environ.get("PORT", PORT))
     print(f"[SolicitationQuoter] Running on http://localhost:{port}")
     app.run(host="127.0.0.1",port=port,debug=False)
