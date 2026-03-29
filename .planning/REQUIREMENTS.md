@@ -58,10 +58,10 @@
 
 ### Reliability
 
-- [ ] **REL-01**: Port configurable via environment variable throughout stack (no hardcoded 5199 in 3 places)
+- [x] **REL-01**: Port configurable via environment variable throughout stack (no hardcoded 5199 in 3 places)
 - [ ] **REL-02**: Backend zombie process prevented on Windows crash (process group + uncaughtException handler)
 - [ ] **REL-03**: File upload wrapped in timeout — backend returns error if parsing takes >30s
-- [ ] **REL-04**: App ID set to production value (remove `com.yourcompany` placeholder)
+- [x] **REL-04**: App ID set to production value (remove `com.yourcompany` placeholder)
 
 ## v2 Requirements
 
@@ -125,10 +125,10 @@
 | DATA-04c | Phase 8 | Complete |
 | DATA-04d | Phase 8 | Complete |
 | DATA-05 | Phase 8 | Complete |
-| REL-01 | Phase 9 | Pending |
+| REL-01 | Phase 9 | Complete |
 | REL-02 | Phase 9 | Pending |
 | REL-03 | Phase 9 | Pending |
-| REL-04 | Phase 9 | Pending |
+| REL-04 | Phase 9 | Complete |
 
 **Coverage:**
 - v1 requirements: 32 total

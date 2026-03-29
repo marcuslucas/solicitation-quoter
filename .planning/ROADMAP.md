@@ -14,7 +14,7 @@ This roadmap elevates an existing, working Electron + Python desktop app to prod
 - [ ] **Phase 6: Error States** - Actionable error messages for parse failures, quote generation, SAM.gov lookups, startup, and form validation
 - [x] **Phase 7: Loading & Progress Feedback** - Progress indicators and disabled-button guards for all async operations (completed 2026-03-23)
 - [ ] **Phase 8: Data Quality & Extraction Trust Layer** - Scope truncation warnings, SAM.gov field mapping, CSV validation, full extraction confidence scoring system (global + per-field scores, structured flag output, zoom-to-region UI), and NAICS/PSC format validation
-- [ ] **Phase 9: Reliability & Config** - Configurable port, zombie-process prevention, upload timeout, and production app ID
+- [x] **Phase 9: Reliability & Config** - Configurable port, zombie-process prevention, upload timeout, and production app ID (completed 2026-03-29)
 
 ## Phase Details
 
@@ -162,8 +162,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Port configurability via env var + production app ID (REL-01, REL-04)
-- [ ] 09-02-PLAN.md — Zombie process prevention + parse timeout (REL-02, REL-03)
+- [x] 09-01-PLAN.md — Port configurability via env var + production app ID (REL-01, REL-04)
+- [x] 09-02-PLAN.md — Zombie process prevention + parse timeout (REL-02, REL-03)
 
 ## Progress
 
@@ -179,4 +179,4 @@ Plans:
 | 6. Error States | 2/3 | In Progress|  |
 | 7. Loading & Progress Feedback | 2/2 | Complete   | 2026-03-23 |
 | 8. Data Quality | 5/6 | In Progress|  |
-| 9. Reliability & Config | 0/2 | Not started | - |
+| 9. Reliability & Config | 2/2 | Complete   | 2026-03-29 |
