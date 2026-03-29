@@ -465,8 +465,8 @@ function step3(c) {
         <div class="field"><label>Street Address</label><input data-vendor-field="address" value="${window.esc(v.address || '')}" placeholder="123 Main Street" /></div>
         <div class="field"><label>City, State ZIP</label><input data-vendor-field="city_state_zip" value="${window.esc(v.city_state_zip || '')}" placeholder="Springfield, VA 22150" /></div>
         <div class="field"><label>Phone</label><input data-vendor-field="phone" value="${window.esc(v.phone || '')}" placeholder="(555) 555-0100" /></div>
-        <div class="field"><label>Email</label><input data-vendor-field="email" value="${window.esc(v.email || '')}" placeholder="quotes@yourcompany.com" /></div>
-        <div class="field"><label>Website</label><input data-vendor-field="website" value="${window.esc(v.website || '')}" placeholder="www.yourcompany.com" /></div>
+        <div class="field"><label>Email</label><input data-vendor-field="email" value="${window.esc(v.email || '')}" placeholder="quotes@example.com" /></div>
+        <div class="field"><label>Website</label><input data-vendor-field="website" value="${window.esc(v.website || '')}" placeholder="www.example.com" /></div>
         <div class="field"><label>SAM.gov UEI</label><input data-vendor-field="sam_uei" value="${window.esc(v.sam_uei || '')}" placeholder="ABCDEF123456" /></div>
       </div>
     </div>
