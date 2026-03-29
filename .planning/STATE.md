@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: Phase complete — ready for verification
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-03-29T13:16:58.052Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-03-29T13:17:10.958Z"
 progress:
   total_phases: 9
   completed_phases: 5
@@ -117,6 +117,9 @@ Recent decisions affecting current work:
 - [Phase 09-reliability-config]: PORT=5199 fallback in main.js parseInt(process.env.PORT || '5199', 10) — zero behavior change for default launches
 - [Phase 09-reliability-config]: _PORT/_ALLOWED_ORIGIN computed at module load in server.py — per-request string construction avoided; consistent with module-level constants pattern
 - [Phase 09-reliability-config]: appId changed to com.solicitationquoter.app — production-ready reverse-DNS identifier for distribution
+- [Phase 09-02]: psutil imported inside _watch_parent function body to avoid import-time overhead
+- [Phase 09-02]: ThreadPoolExecutor(max_workers=1) wraps both parse_document and extract_data as a unit to avoid partial-result race on timeout
+- [Phase 09-02]: No detached:true in spawn() per research Pitfall 5 — detached prevents SIGTERM propagation on macOS
 
 ### Pending Todos
 
@@ -137,6 +140,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29T13:16:42.519Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-03-29T13:17:10.952Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None
