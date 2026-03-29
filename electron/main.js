@@ -4,7 +4,7 @@ const { spawn } = require('child_process')
 const http = require('http')
 const fs = require('fs')
 
-const PORT = 5199
+const PORT = parseInt(process.env.PORT || '5199', 10)
 let win = null
 let backend = null
 

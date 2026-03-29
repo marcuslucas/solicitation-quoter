@@ -8,6 +8,9 @@ from extractor import parse_document, extract_data, extract, extract_line_items,
 from generator import generate_quote
 from validator import validate_fields
 
+_PORT = int(os.environ.get("PORT", PORT))
+_ALLOWED_ORIGIN = f"http://127.0.0.1:{_PORT}"
+
 app = Flask(__name__)
 
 # Flask enforces MAX_CONTENT_LENGTH at the WSGI layer and raises a 413 before
@@ -93,12 +96,12 @@ def handle_request_entity_too_large(e):
 @app.after_request
 def cors(r):
     # Allow requests from the Electron renderer (loaded from file://, which sends
-    # Origin: null) and from any localhost:5199 page during development.
+    # Origin: null) and from the configured localhost origin during development.
     origin = request.headers.get("Origin", "")
-    if origin in ("http://127.0.0.1:5199", "null", "") or origin.startswith("file://"):
-        r.headers["Access-Control-Allow-Origin"] = origin if origin else "http://127.0.0.1:5199"
+    if origin in (_ALLOWED_ORIGIN, "null", "") or origin.startswith("file://"):
+        r.headers["Access-Control-Allow-Origin"] = origin if origin else _ALLOWED_ORIGIN
     else:
-        r.headers["Access-Control-Allow-Origin"] = "http://127.0.0.1:5199"
+        r.headers["Access-Control-Allow-Origin"] = _ALLOWED_ORIGIN
     r.headers["Access-Control-Allow-Headers"] = "Content-Type"
     r.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return r

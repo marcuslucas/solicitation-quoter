@@ -1,5 +1,5 @@
 {
-  "appId": "com.yourcompany.solicitationquoter",
+  "appId": "com.solicitationquoter.app",
   "productName": "Solicitation Quoter",
   "directories": { "output": "dist", "buildResources": "resources" },
   "files": ["electron/**/*", "package.json"],
