@@ -36,7 +36,7 @@ The panel's inner content changes from a single canvas to a container div. The t
 <div id="pdf-viewer-panel" class="pdf-viewer-panel collapsed">
   <div id="pdf-pages-container"></div>
 </div>
-```
+```pas
 
 Each page gets its own canvas appended to `#pdf-pages-container` at load time:
 ```html
