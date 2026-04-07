@@ -5,114 +5,13 @@
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SCOPE_MAX_DISPLAY = '3,000'
 
-// ── PDF VIEWER STATE ──────────────────────────────────────────────────────────
-let _pdfDoc = null
-let _pdfLoading = false
-
-async function loadPdfViewer() {
-  if (_pdfLoading || _pdfDoc) return
-  _pdfLoading = true
-  try {
-    // Resolve container first — all messages go here so panel structure is preserved
-    const container = document.getElementById('pdf-pages-container')
-    if (!container) return
-
-    // Clear any stale canvases or prior error messages
-    container.innerHTML = ''
-
-    if (!window.S.sourceFile) {
-      // Note: using <div> + var(--space-md) consistent with existing codebase style
-      container.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">PDF preview requires re-uploading the document in this session.</div>'
-      return
-    }
-    if (!window.pdfjsLib) throw new Error('PDF.js not loaded')
-
-    const arrayBuffer = await window.S.sourceFile.arrayBuffer()
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer })
-    _pdfDoc = await loadingTask.promise
-
-    // Wait for CSS transition before measuring width
-    await new Promise(resolve => setTimeout(resolve, 220))
-
-    for (let i = 1; i <= _pdfDoc.numPages; i++) {
-      const page = await _pdfDoc.getPage(i)
-      const canvas = document.createElement('canvas')
-      canvas.id = `pdf-page-${i}`
-      container.appendChild(canvas)
-
-      let panelWidth = container.offsetWidth || 0
-      if (panelWidth < 10) {
-        let el = container.parentElement
-        while (el && panelWidth < 10) { panelWidth = el.offsetWidth; el = el.parentElement }
-      }
-      panelWidth = panelWidth || 600
-
-      const scale = panelWidth / page.getViewport({ scale: 1 }).width
-      const viewport = page.getViewport({ scale })
-      canvas.width = viewport.width
-      canvas.height = viewport.height
-      const ctx = canvas.getContext('2d')
-      await page.render({ canvasContext: ctx, viewport }).promise
-    }
-  } catch (err) {
-    console.error('PDF viewer load error:', err)
-    const container = document.getElementById('pdf-pages-container')
-    if (container) container.innerHTML = '<div style="padding:var(--space-md);color:var(--color-text-muted)">Could not load PDF preview.</div>'  // <div> consistent with codebase style
-  } finally {
-    _pdfLoading = false
-  }
-}
-
-
-window.scrollPdfToBoundingBox = async function(bbox) {
-  // bbox: { page, x0, y0, x1, y1 }
-  if (!bbox || !bbox.page) return
-
-  const pdfPanel = document.getElementById('pdf-viewer-panel')
-  const pdfToggle = document.getElementById('pdf-toggle-btn')
-
-  // Expand panel if collapsed
-  if (pdfPanel && pdfPanel.classList.contains('collapsed')) {
-    pdfPanel.classList.remove('collapsed')
-    pdfPanel.classList.add('expanded')
-    if (pdfToggle) pdfToggle.textContent = 'Hide PDF'
-  }
-
-  // Load if not yet loaded
-  if (!_pdfDoc && !_pdfLoading) await loadPdfViewer()
-  // If load is in flight (race), wait for it to finish (10s timeout)
-  if (_pdfLoading) {
-    await new Promise(resolve => {
-      const deadline = Date.now() + 10000
-      const check = setInterval(() => {
-        if (!_pdfLoading || Date.now() > deadline) { clearInterval(check); resolve() }
-      }, 50)
-    })
-  }
-
-  if (!_pdfDoc) return
-
-  // Find the canvas for the target page
-  const targetCanvas = document.getElementById(`pdf-page-${bbox.page}`)
-  if (!targetCanvas || !pdfPanel) return
-
-  // Scale: canvas.width (rendered pixels) / unscaled page width
-  const page = await _pdfDoc.getPage(bbox.page)
-  const scale = targetCanvas.width / page.getViewport({ scale: 1 }).width
-
-  // getBoundingClientRect is coordinate-system independent — no offsetParent dependency
-  // pdfplumber y0 is from top of page; PDF.js viewport also measures from top
-  const canvasTop = targetCanvas.getBoundingClientRect().top - pdfPanel.getBoundingClientRect().top
-  const scrollTop = pdfPanel.scrollTop + canvasTop + (bbox.y0 * scale) - 50
-
-  pdfPanel.scrollTo({ top: Math.max(0, scrollTop), behavior: 'smooth' })
-}
+// scrollPdfToBoundingBox — no-op stub. Inline viewer removed in Phase 10 (UI Fix 2).
+// Wiring kept intact so flagged-field click handlers don't throw.
+window.scrollPdfToBoundingBox = function() {}
 
 // ── STEP 2 RENDER ─────────────────────────────────────────────────────────────
 
 function step2(c) {
-  _pdfDoc = null      // Reset PDF doc reference on re-render
-  _pdfLoading = false // Reset loading flag on re-render
   const d = window.S.extracted
   const m = d._method||'rules'
   const badge = m === 'demo'
@@ -189,23 +88,17 @@ function step2(c) {
     <div style="font-size:11px;color:var(--color-text-muted);margin-top:8px">These will pre-fill your quote line items.</div>
   </div>` : ''
 
-  // PDF viewer panel per D-24, D-27 — only for PDF sources
+  // PDF viewer — single button that opens the source file in the system PDF viewer
   const isPdf = window.S.sourceType === 'pdf'
   const pdfPanelHtml = isPdf ? `
     <div class="card">
-      <button class="btn btn-sm" id="pdf-toggle-btn" style="text-transform:uppercase;letter-spacing:0.6px;font-weight:600;font-size:var(--text-base)">View PDF Source</button>
-      <div id="pdf-viewer-panel" class="pdf-viewer-panel collapsed">
-        <div id="pdf-pages-container"></div>
-      </div>
+      <button class="btn btn-sm" id="pdf-view-btn" style="text-transform:uppercase;letter-spacing:0.6px;font-weight:600;font-size:var(--text-base)">View PDF</button>
     </div>` : ''
 
-  // Scope truncation banner per D-01, D-02, D-03
+  // Scope truncation banner — button toggles textarea between truncated/full text in-place
   const scopeTruncated = d.scope_truncated === true
   const scopeBanner = scopeTruncated
-    ? `<div class="alert alert-warn" id="scope-trunc-banner">Scope truncated at ${SCOPE_MAX_DISPLAY} characters <button class="btn btn-sm" id="scope-expand-btn" style="margin-left:var(--space-sm)">View full text</button></div>`
-    : ''
-  const scopeFullBlock = scopeTruncated
-    ? `<div id="scope-full-block" class="scope-full-text hidden">${esc(d.scope_full || d.scope_of_work || '')}</div>`
+    ? `<div class="alert alert-warn" id="scope-trunc-banner">Scope truncated at ${SCOPE_MAX_DISPLAY} characters <button class="btn btn-sm" id="scope-expand-btn" data-expanded="false" style="margin-left:var(--space-sm)">Show more</button></div>`
     : ''
 
   c.innerHTML = `
@@ -220,7 +113,6 @@ function step2(c) {
     ${scopeBanner}
     <textarea id="scope-ta" rows="6">${esc(d.scope_of_work||'')}</textarea>
     <div class="char-count" id="scope-count">${(d.scope_of_work||'').length} / ${SCOPE_MAX_DISPLAY}</div>
-    ${scopeFullBlock}
   </div>
   ${qhtml}
   ${pdfPanelHtml}
@@ -250,33 +142,33 @@ function step2(c) {
     })
   }
 
-  // Scope expand/collapse toggle per D-02, D-03
+  // Scope expand/collapse — swap textarea content in-place between truncated and full text
   const expandBtn = document.getElementById('scope-expand-btn')
-  const fullBlock = document.getElementById('scope-full-block')
-  if (expandBtn && fullBlock) {
+  if (expandBtn && scopeTa) {
     expandBtn.addEventListener('click', () => {
-      const isHidden = fullBlock.classList.contains('hidden')
-      fullBlock.classList.toggle('hidden')
-      expandBtn.textContent = isHidden ? 'Collapse full text' : 'View full text'
+      const isExpanded = expandBtn.dataset.expanded === 'true'
+      if (isExpanded) {
+        scopeTa.value = d.scope_of_work || ''
+        window.S.extracted.scope_of_work = scopeTa.value
+        if (scopeCount) scopeCount.textContent = scopeTa.value.length + ' / ' + SCOPE_MAX_DISPLAY
+        expandBtn.textContent = 'Show more'
+        expandBtn.dataset.expanded = 'false'
+      } else {
+        scopeTa.value = d.scope_full || d.scope_of_work || ''
+        window.S.extracted.scope_of_work = scopeTa.value
+        if (scopeCount) scopeCount.textContent = scopeTa.value.length + ' / ' + SCOPE_MAX_DISPLAY
+        expandBtn.textContent = 'Show less'
+        expandBtn.dataset.expanded = 'true'
+      }
     })
   }
 
-  // PDF viewer toggle per D-24
-  const pdfToggle = document.getElementById('pdf-toggle-btn')
-  const pdfPanel = document.getElementById('pdf-viewer-panel')
-  if (pdfToggle && pdfPanel) {
-    pdfToggle.addEventListener('click', async () => {
-      const isCollapsed = pdfPanel.classList.contains('collapsed')
-      if (isCollapsed) {
-        pdfPanel.classList.remove('collapsed')
-        pdfPanel.classList.add('expanded')
-        pdfToggle.textContent = 'Hide PDF'
-        if (!_pdfDoc) await loadPdfViewer()
-      } else {
-        pdfPanel.classList.remove('expanded')
-        pdfPanel.classList.add('collapsed')
-        pdfToggle.textContent = 'View PDF Source'
-      }
+  // PDF viewer — open source file in system default PDF viewer
+  const pdfViewBtn = document.getElementById('pdf-view-btn')
+  if (pdfViewBtn) {
+    pdfViewBtn.addEventListener('click', () => {
+      const pdfPath = window.S.filePath || (window.S.file && window.S.file.path) || ''
+      if (pdfPath) window.api.openPath(pdfPath)
     })
   }
 

@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('api', {
   openFile:    ()      => ipcRenderer.invoke('open-file'),
   saveQuote:   (opts)  => ipcRenderer.invoke('save-quote', opts),
   openUrl:     (url)   => ipcRenderer.invoke('open-url', url),
+  openPath:    (fp)   => ipcRenderer.invoke('open-path', fp),
   pickLogo:    ()      => ipcRenderer.invoke('pick-logo'),
   generatePdf: (opts)  => ipcRenderer.invoke('generate-pdf', opts),
   savePdf:     (opts)  => ipcRenderer.invoke('save-pdf', opts),

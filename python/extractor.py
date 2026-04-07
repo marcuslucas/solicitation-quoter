@@ -48,7 +48,42 @@ def parse_document(filepath):
     raise ValueError(f"Unsupported file type: {ext}")
 
 
-def extract(text):
+# ── FORMAT DETECTION ──────────────────────────────────────────────────────────
+
+def detect_format(text):
+    """Identify the solicitation format from the document text."""
+    first_1000 = text[:1000]
+    if "Notice ID:" in first_1000:
+        return "sam_export"
+    if re.search(r"SOLICITATION NUMBER\*", first_1000):
+        return "agency_form"
+    if "Issuing Office:" in first_1000 or re.search(r"\bSECTION\s+[A-E]\b", text):
+        return "formal_rfq"
+    return "unknown"
+
+
+# ── SHARED HELPERS ────────────────────────────────────────────────────────────
+
+def _scope_block(raw):
+    """Return scope_of_work dict with optional truncation metadata."""
+    raw = re.sub(r"\s+", " ", raw).strip()
+    d = {"scope_of_work": raw[:SCOPE_MAX]}
+    if len(raw) > SCOPE_MAX:
+        d["scope_truncated"] = True
+        d["scope_full"] = raw
+    else:
+        d["scope_truncated"] = False
+    return d
+
+
+# ── FORMAT-SPECIFIC EXTRACTORS ────────────────────────────────────────────────
+
+def extract_sam_export(text):
+    """
+    Extract fields from SAM.gov-style structured solicitations.
+    Fingerprint: 'Notice ID:' near top of page 1.
+    Structure: labeled key-value pages with 'Primary Contact', 'Notice Details', etc.
+    """
     def find(patterns):
         for p in patterns:
             m = re.search(p, text, re.IGNORECASE | re.MULTILINE)
@@ -107,13 +142,8 @@ def extract(text):
 
     # Scope of work
     m = re.search(r"Description[:\s]*(.+?)(?=Contact Information|Notice Details|Attachment|\Z)", text, re.IGNORECASE|re.DOTALL)
-    raw_scope = re.sub(r"\s+", " ", m.group(1)).strip() if m else re.sub(r"\s+", " ", text[:SCOPE_MAX]).strip()
-    d["scope_of_work"] = raw_scope[:SCOPE_MAX]
-    if len(raw_scope) > SCOPE_MAX:
-        d["scope_truncated"] = True
-        d["scope_full"] = raw_scope
-    else:
-        d["scope_truncated"] = False
+    raw_scope = m.group(1) if m else text[:SCOPE_MAX * 2]
+    d.update(_scope_block(raw_scope))
 
     # Quantities
     qtys = re.findall(r"\b(SM|S|M|L|XL|XXL|2XL|3XL)[:\s]*(\d+)", text, re.IGNORECASE)
@@ -127,6 +157,232 @@ def extract(text):
 
     return {k: v for k, v in d.items() if v not in ("", [], None)}
 
+
+def extract_agency_form(text):
+    """
+    Extract fields from VA/agency Combined Synopsis/Solicitation form.
+    Fingerprint: 'SOLICITATION NUMBER*' on page 1.
+    Structure: ALL-CAPS labels with optional * followed by value on the SAME line.
+    E.g.: SOLICITATION NUMBER* 36C24225Q0696
+    Contact block is multi-line: POINT OF CONTACT* -> blank lines -> role -> name -> email.
+    """
+    def same_line(label_pat):
+        """Match: LABEL[*] VALUE (label and value on same line, space-separated)."""
+        m = re.search(label_pat + r'\*?\s+(.+?)(?:\n|$)', text, re.IGNORECASE)
+        return m.group(1).strip() if m else ""
+
+    d = {}
+    d["solicitation_number"] = same_line(r"SOLICITATION NUMBER")
+    d["project_title"]       = same_line(r"SUBJECT")
+    # Strip trailing city/country suffix (e.g. ", NEW YORK, USA") — stop at first comma
+    due_raw = same_line(r"RESPONSE DATE/TIME/ZONE")
+    d["due_date"] = re.sub(r",.*$", "", due_raw).strip()
+    d["issuing_agency"]      = same_line(r"CONTRACTING OFFICE ADDRESS")
+
+    naics_m = re.search(r"NAICS CODE\*?\s+(\d{5,6})", text, re.IGNORECASE)
+    if naics_m:
+        d["naics_code"] = naics_m.group(1).strip()
+
+    psc_m = re.search(r"PRODUCT SERVICE CODE\*?\s+([A-Z0-9]{3,4})", text, re.IGNORECASE)
+    if psc_m:
+        d["psc_code"] = psc_m.group(1).strip()
+
+    # Contact name — find the line immediately before the email address in the
+    # POINT OF CONTACT block. Works for both layouts:
+    #   pdfplumber: "POINT OF CONTACT* Contract Officer\nNathan Northrup\nemail"
+    #   pypdf:      "POINT OF CONTACT*\n\n\nContract Officer\nNathan Northrup\nemail"
+    poc_m = re.search(r"POINT OF CONTACT\*?[^\n]*\n(.+?)(?=PLACE OF PERFORMANCE|\Z)", text, re.DOTALL)
+    if poc_m:
+        name_m = re.search(
+            r"([A-Z][a-z]+(?:\s+[A-Z][a-z.]+)+)\s*\n\s*([\w.%+\-]+@[\w.\-]+\.\w{2,})",
+            poc_m.group(1))
+        if name_m:
+            d["contact_name"] = name_m.group(1).strip()
+
+    # Email — prefer dedicated label (apostrophe may be a replacement char in pypdf)
+    email_m = re.search(r"AGENCY CONTACT.{1,3}S EMAIL ADDRESS\s+([\w.%+\-]+@[\w.\-]+\.\w{2,})", text, re.IGNORECASE)
+    if not email_m:
+        email_m = re.search(r"([\w.%+\-]+@[\w.\-]+\.\w{2,})", text)
+    if email_m:
+        d["contact_email"] = email_m.group(1).strip()
+
+    # Place of performance — full address block until next ALL-CAPS label
+    pop_m = re.search(
+        r"PLACE OF PERFORMANCE\s*\nADDRESS\s+(.+?)(?=\nPOSTAL CODE|\nCOUNTRY|\nADDITIONAL|\Z)",
+        text, re.DOTALL)
+    if pop_m:
+        zip_m = re.search(r"POSTAL CODE\s+(\d{5})", text)
+        lines = [re.sub(r"\s+and\s*$", "", l.strip(), flags=re.IGNORECASE)
+                 for l in pop_m.group(1).split('\n') if l.strip()]
+        val = ", ".join(lines)
+        if zip_m:
+            val = val + " " + zip_m.group(1)
+        d["place_of_performance"] = val
+
+    # Solicitation type from prose
+    type_m = re.search(r"solicitation is issued as (?:an?\s+)?([A-Z]+)", text, re.IGNORECASE)
+    if type_m:
+        d["solicitation_type"] = type_m.group(1).strip()
+    else:
+        type_m2 = re.search(r"\b(RFQ|RFP|IFB)\b", text)
+        if type_m2:
+            d["solicitation_type"] = type_m2.group(1)
+
+    # Scope — description paragraph from prose
+    scope_m = re.search(
+        r"(?:is seeking|firm fixed.price service contract for)\s+(.+?)"
+        r"(?:\n\n|All interested|See attached|\Z)",
+        text, re.IGNORECASE | re.DOTALL)
+    if scope_m:
+        d.update(_scope_block(scope_m.group(1)))
+    else:
+        d.update(_scope_block(text[:SCOPE_MAX * 2]))
+
+    return {k: v for k, v in d.items() if v not in ("", [], None)}
+
+
+def extract_formal_rfq(text):
+    """
+    Extract fields from formal RFQ documents with cover page + lettered sections.
+    Fingerprint: 'Issuing Office:' on page 1, or SECTION A/B/C/D/E headings.
+    Structure: labeled cover page fields; NAICS/PSC in Section A prose; SOW in Section C.
+    """
+    def labeled(label_pat):
+        """Match: Label: Value (same line)."""
+        m = re.search(label_pat + r'\s*(.+?)(?:\n|$)', text, re.IGNORECASE)
+        return m.group(1).strip() if m else ""
+
+    d = {}
+    d["solicitation_number"] = labeled(r"Solicitation Number:")
+    d["project_title"]       = labeled(r"Title:")
+    d["posting_date"]        = labeled(r"Solicitation Release Date:")
+    d["solicitation_type"]   = "RFQ"
+
+    # Due date — strip leading weekday name if present
+    due_m = re.search(
+        r"Quotation Due Date:\s*(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s*)?(.+?)(?:\n|$)",
+        text, re.IGNORECASE)
+    if due_m:
+        d["due_date"] = due_m.group(1).strip().rstrip(',')
+
+    # Issuing agency — multi-line block; stop before street address / ZIP
+    agency_m = re.search(r"Issuing Office:\s+(.+?)(?:\n\n|\Z)", text, re.DOTALL)
+    if agency_m:
+        lines = [l.strip() for l in agency_m.group(1).split('\n') if l.strip()]
+        org_lines = []
+        for line in lines:
+            if re.match(r'\d+\s+\w', line) or re.search(r'\b[A-Z]{2}\s+\d{5}', line):
+                break
+            org_lines.append(line)
+        if org_lines:
+            d["issuing_agency"] = ", ".join(org_lines)
+
+    # Agency contact — "Agency Contact: Name, Title, (XXX) XXX-XXXX, email"
+    contact_m = re.search(r"Agency Contact:\s+([^,\n]+)", text, re.IGNORECASE)
+    if contact_m:
+        d["contact_name"] = contact_m.group(1).strip()
+
+    phone_m = re.search(r"Agency Contact:[^\n]*\((\d{3})\)\s*(\d{3})-(\d{4})", text, re.IGNORECASE)
+    if phone_m:
+        d["contact_phone"] = phone_m.group(1) + phone_m.group(2) + phone_m.group(3)
+
+    email_m = re.search(r"Agency Contact:[^\n]*([\w.%+\-]+@[\w.\-]+\.\w{2,})", text, re.IGNORECASE)
+    if email_m:
+        d["contact_email"] = email_m.group(1).strip()
+
+    # NAICS / PSC from Section A prose
+    naics_m = re.search(r"NAICS[^\d]{0,30}(\d{5,6})", text, re.IGNORECASE)
+    if naics_m:
+        d["naics_code"] = naics_m.group(1).strip()
+
+    psc_m = re.search(r"Product Service Code \(PSC\)\s+(?:is\s+)?([A-Z]\d{3,4})", text, re.IGNORECASE)
+    if psc_m:
+        d["psc_code"] = psc_m.group(1).strip()
+
+    set_aside_m = re.search(r"TOTAL SMALL BUSINESS SET.?\s*ASIDE", text, re.IGNORECASE)
+    if set_aside_m:
+        d["set_aside"] = "Total Small Business Set-Aside"
+
+    # Place of performance — "located at ADDRESS" in SOW prose.
+    # DOTALL needed because pypdf may split "5th" across lines (superscript artifact).
+    # Rejoin lowercase continuations after capture (e.g. "5\nth" → "5th").
+    pop_m = re.search(r"located at\s+(.+?)(?:\.|,\s*and\b|\Z)", text, re.IGNORECASE | re.DOTALL)
+    if pop_m:
+        val = re.sub(r"\n([a-z])", r"\1", pop_m.group(1))
+        d["place_of_performance"] = re.sub(r"\s+", " ", val).strip()
+
+    # Period of performance — Base Period + all Option lines that follow
+    base_m = re.search(r"Base Period:\s*(.+?)(?:\n|$)", text, re.IGNORECASE)
+    if base_m:
+        base_val = base_m.group(1).strip()
+        opts = []
+        for opt_line in re.findall(r"Option\s+\d+:[^\n]+", text, re.IGNORECASE):
+            dates = re.findall(r"\d{2}/\d{2}/\d{4}", opt_line)
+            if dates:
+                opts.append(dates[-1])  # end date is the last date on the line
+        if opts:
+            n = len(opts)
+            d["period_of_performance"] = (
+                f"Base period {base_val}, plus {n} option period"
+                + ("s" if n != 1 else "")
+                + f" of 12 months each through {opts[-1]}"
+            )
+        else:
+            d["period_of_performance"] = "Base period " + base_val
+
+    # Scope — full Section C content
+    scope_m = re.search(
+        r"SECTION C[^\n]*\n(.+?)(?=SECTION\s+[D-Z]\b|\Z)",
+        text, re.IGNORECASE | re.DOTALL)
+    if scope_m:
+        d.update(_scope_block(scope_m.group(1)))
+    else:
+        d.update(_scope_block(text[:SCOPE_MAX * 2]))
+
+    return {k: v for k, v in d.items() if v not in ("", [], None)}
+
+
+# ── GENERIC FALLBACK ──────────────────────────────────────────────────────────
+
+def apply_generic_fallback(d, text):
+    """Fill any still-empty fields using format-agnostic patterns. Modifies d in-place."""
+    def try_fill(key, patterns):
+        if d.get(key):
+            return
+        for p in patterns:
+            m = re.search(p, text, re.IGNORECASE | re.MULTILINE)
+            if m:
+                v = (m.group(1) if m.lastindex else m.group(0)).strip()
+                if v:
+                    d[key] = v
+                    return
+
+    try_fill("solicitation_number", [
+        r"(?:solicitation\s*(?:number|#|no\.?))\s*[:\s]*([A-Z0-9][-A-Z0-9]{6,})",
+    ])
+    try_fill("naics_code", [
+        r"NAICS[^\d]{0,20}(\d{5,6})",
+    ])
+    try_fill("psc_code", [
+        r"(?:PSC|Product\s+Service\s+Code)[^\w]{0,20}([A-Z]?\d{3,4}[A-Z]?)",
+    ])
+    try_fill("contact_email", [
+        r"([\w.%+\-]+@[\w.\-]+\.\w{2,})",
+    ])
+    try_fill("due_date", [
+        r"(?:response|due|deadline|closing)[^0-9]{0,30}(\d{1,2}[-/]\d{1,2}[-/]\d{2,4}[^,\n]*)",
+    ])
+    try_fill("set_aside", [
+        r"(Total Small Business Set.?Aside)",
+        r"(Small Business Set.?Aside)",
+        r"(8\(a\)(?:\s+set.?aside)?)",
+        r"(SDVOSB)",
+        r"(HUBZone)",
+        r"(WOSB)",
+    ])
+
+
+# ── AI EXTRACTION ─────────────────────────────────────────────────────────────
 
 def ai_extract(text):
     api_key = os.environ.get('ANTHROPIC_API_KEY', '')
@@ -152,25 +408,46 @@ SOLICITATION:
     return json.loads(raw)
 
 
+# ── ENTRY POINT ───────────────────────────────────────────────────────────────
+
 def extract_data(text, api_key=""):
-    rules = extract(text)
+    format_name = detect_format(text)
+    print(f"Detected format: {format_name}")
+
+    if format_name == "sam_export":
+        d = extract_sam_export(text)
+    elif format_name == "agency_form":
+        d = extract_agency_form(text)
+    elif format_name == "formal_rfq":
+        d = extract_formal_rfq(text)
+    else:
+        d = {}
+
+    apply_generic_fallback(d, text)
+    d["_format"] = format_name
+    d["_method"] = "rules"
+
     _env_key = os.environ.get('ANTHROPIC_API_KEY', '')
     if api_key or _env_key:
         try:
             ai = ai_extract(text)
-            merged = {**rules}
-            for k,v in ai.items():
+            merged = {**d}
+            for k, v in ai.items():
                 if v and v != "" and v != [] and v != {}:
                     merged[k] = v
-            # Store AI line items separately so extractor can prefer them
             if ai.get("line_items"):
                 merged["ai_line_items"] = ai["line_items"]
             merged["_method"] = "ai+rules"
             return merged
         except Exception as e:
             print(f"AI failed, using rules: {e}")
-    rules["_method"] = "rules"
-    return rules
+
+    return d
+
+
+# Keep the old name as an alias so any direct callers don't break
+def extract(text):
+    return extract_sam_export(text)
 
 
 def extract_line_items(solicitation, text):

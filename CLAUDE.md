@@ -1,76 +1,173 @@
-# CLAUDE.md
+# Solicitation Quoter
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Desktop app (Electron + Python Flask) that converts government solicitation PDFs into formatted `.docx` quote documents. Upload a solicitation → review extracted fields → add vendor info → generate quote.
 
-## Commands
+## Directory Structure
 
-**Run the app (development):**
 ```
-npm start
+electron/                    # Electron desktop app
+  main.js                    — Main process: spawns backend, IPC, window lifecycle
+  preload.js                 — Context-isolated IPC bridge (window.api)
+  index.html                 — App shell, loads JS modules
+  js/modules/
+    state.js                 — Wizard state object (S), localStorage persistence
+    step1.js                 — Upload + parse + SAM.gov lookup
+    step2.js                 — Review extracted fields, confidence badges, PDF viewer
+    step3.js                 — Vendor info + line items table + CSV import
+    step4.js                 — Generate quote + download
+    index.js                 — Bootstrapper, step wiring, cross-cutting (settings, profiles, modals)
+    shared/utils.js          — API calls, formatting helpers, render(), esc()
+    shared/theme.js          — Theme switching, CSS variable application
+  loading.html               — Startup splash
+  error.html                 — Backend startup failure fallback
+
+python/                      # Flask backend (port 5199, configurable via PORT env var)
+  server.py                  — Thin Flask controllers: /ping, /parse, /generate_quote, /sam_lookup
+  extractor.py               — Regex field extraction + optional Claude AI extraction
+  validator.py               — Per-field confidence scoring (0-100), flag generation
+  generator.py               — .docx quote builder via python-docx
+  constants.py               — Shared constants (port, max sizes, field names, SCORED_FIELDS)
+
+docs/                        # Project documentation (context files)
+  architecture.md            — System design, data flow, process model, security boundaries
+  conventions.md             — Naming, code style, import order, error handling patterns
+  integrations.md            — External APIs (Anthropic Claude, SAM.gov, Google Fonts)
+  requirements.md            — v1 requirements (all complete), v2 backlog
+  roadmap.md                 — Completed phases, active work, next priorities
+  field-mapping.md           — Solicitation format definitions and field extraction patterns
+
+testdata/                    # Manual test fixtures
+  run.py                     — CLI test harness for extraction + generation
+  quote_input.json           — Sample vendor + line items
+  solicitation.txt           — Sample solicitation text
+  test_solicitations/
+    (W911S2..., N50054...), SAM-export format extracts correctly,
+    (36C24225Q0696),        Agency form format  — all fields broken (see field-mapping.md),
+    (request-for-quotation.pdf / 69056725Q000044), Formal RFQ format  — untested
 ```
-Electron launches and automatically spawns the Python backend.
 
-**Install dependencies (one-time setup):**
-```
-pip install flask pdfplumber pypdf python-docx anthropic psutil
-npm install
-```
+## Tech Stack
 
-**Build a distributable installer:**
-```
-# Windows
-pip install pyinstaller
-pyinstaller --onefile --name solicitationquoter-backend --noconsole --hidden-import psutil python/server.py
-rename dist dist-backend
-npm run build:win
+| Layer         | Tech                                                         |
+| ------------- | ------------------------------------------------------------ |
+| UI            | Electron 28.3 + vanilla HTML/CSS/JS (modular per-step files) |
+| Backend       | Python Flask on localhost:5199                               |
+| PDF parsing   | pdfplumber (primary), pypdf (fallback)                       |
+| DOCX parsing  | python-docx                                                  |
+| AI extraction | Claude claude-sonnet-4-6 via Anthropic SDK (optional)        |
+| Quote output  | python-docx .docx generation                                 |
+| Packaging     | electron-builder (Win NSIS / macOS DMG) + PyInstaller        |
 
-# Mac
-pyinstaller --onefile --name solicitationquoter-backend --noconsole --hidden-import psutil python/server.py
-mv dist dist-backend
-npm run build:mac
-```
-Output appears in `dist/`.
+## Conventions
 
-## Architecture
+- **Python**: snake_case functions/variables, 4-space indent, print() for logging
+- **JavaScript**: camelCase functions/variables, 2-space indent, console.log/error for logging
+- **State**: Centralized `S` object in state.js; step modules read/write `window.S`
+- **Events**: All via addEventListener, no inline handlers. data-\* attributes for delegation
+- **CSS**: Semantic tokens only (--color-_, --space-_, --text-\*). No hardcoded hex/px outside :root
+- **IPC**: All system APIs via window.api (preload.js contextBridge). Never nodeIntegration
+- **Backend**: Thin controllers in server.py. Logic in extractor.py, generator.py, validator.py
+- **Errors**: Python returns {error: "message"} with HTTP status. JS shows specific actionable messages
+- **Tests**: No automated tests yet (v2 backlog). Manual testing via testdata/run.py
 
-This is an **Electron + Python Flask** desktop app. The UI is served from local HTML files and communicates with a locally-spawned Flask backend.
+## Current State (as of Phase 10 start)
 
-### Process model
-- `electron/main.js` spawns `python/server.py` as a child process on startup (port 5199), waits for it to respond to `/ping`, then loads `electron/index.html`.
-- In a packaged build, it runs `solicitationquoter-backend.exe` from `process.resourcesPath` instead.
-- On quit, the backend is killed via `taskkill` (Windows) or `SIGTERM` (Mac).
+### What's working
 
-### IPC bridge (`electron/preload.js`)
-The renderer accesses four methods exposed via `contextBridge` as `window.api`:
-- `getPort()` — returns 5199 so the renderer knows where to POST
-- `openFile()` — opens the native file picker (PDF/DOCX/TXT)
-- `saveQuote({ bytes, name })` — opens a save dialog and writes the `.docx` bytes to disk
-- `openUrl(url)` — opens a URL in the system browser
+- SAM-export format (W911S2.., N50054..) extracts correctly
+- Full wizard flow: upload → review → vendor info → generate .docx
+- SAM.gov lookup, confidence badges, PDF viewer (inline, pre-fix)
 
-### Python backend (`python/server.py`)
-Three routes:
-- `GET /ping` — health check used by Electron during startup polling
-- `POST /parse` — accepts a `multipart/form-data` upload with `file` and optional `api_key`. Extracts text, then runs rule-based regex extraction. If an API key is provided, also calls `claude-sonnet-4-20250514` to AI-extract fields and merges the results (AI wins on conflicts). Returns JSON with all solicitation fields.
-- `POST /generate_quote` — accepts JSON `{ solicitation, vendor, line_items }`. Builds and returns a `.docx` file using `python-docx` with a formatted quote layout.
+### What's not working
 
-### UI (`electron/index.html`)
-A single self-contained HTML file with all CSS and JS inline. Implements a 5-step wizard:
-1. Upload document
-2. Review/edit extracted solicitation data
-3. Enter vendor/company info
-4. Build line items table
-5. Generate and download the `.docx` quote
+- Agency form format (36C24225Q0696) — all fields broken (see field-mapping.md)
+- Formal RFQ format (request-for-quotation.pdf / 69056725Q000044) — untested
+- Scope truncation expand-in-place (step2.js)
+- PDF viewer opens inline instead of separate window (step2.js), button opens default machine PDF src
 
-The renderer fetches the backend port via `window.api.getPort()` on load, then uses `fetch()` to call `http://127.0.0.1:{port}/parse` and `/generate_quote` directly.
+### Phase 10 not yet started
 
-### Data flow
-```
-User picks file → Electron dialog (IPC) → renderer POSTs to Flask /parse
-→ Python extracts text (pdfplumber/pypdf/python-docx)
-→ Rule-based regex + optional Claude AI extraction
-→ JSON returned to renderer → user edits fields
-→ User fills vendor info + line items
-→ renderer POSTs to Flask /generate_quote
-→ Python builds .docx → bytes streamed back
-→ renderer calls window.api.saveQuote() → native save dialog → file written to disk
-```
+- extractor.py has no format detection yet
+- No agency_form parser, no formal_rfq parser
+
+## Active Priorities
+
+### CRITICAL — Phase 10: Multi-Format Parser (NEW)
+
+The extractor currently handles SAM.gov-style structured solicitations well but fails on other formats.
+Three confirmed format types need support:
+
+1. **SAM-export** (W911S2.., N50054..): Clean key-value pairs on labeled pages → WORKING
+2. **Agency form** (36C242..): Structured header table on page 1 + flowing prose → BROKEN (see docs/field-mapping.md)
+3. **Formal RFQ** (690567..): Cover page + lettered sections (A/B/C/D/E) with data in prose → NOT TESTED
+
+Parser architecture: format detection → strategy selection → format-specific extraction → generic fallback → confidence scoring.
+No AI dependency — all extraction must work with regex/rules only for privacy (documents stay local).
+
+Read docs/field-mapping.md before touching extractor.py.
+
+### CRITICAL — UI Fixes
+
+1. **Scope truncation expand-in-place**: Currently opens second element below. Fix: single element with state toggle
+2. **PDF viewer as separate window**: Replace inline viewer with button → window.open() with blob URL
+
+### UI Bug 1: Scope truncation expand-in-place (step2.js)
+
+**Current behavior**: Scope of work field is truncated with a "show more"
+link. Clicking it inserts a second expanded element below instead of
+replacing the truncated text in-place.
+**Screenshot**: testdata/test_solicitations/36C24225Q0696/36C24225Q0696_truncation_bug.png
+**Expected**: Single element toggles between truncated/full text.
+No duplicate element. Button label changes "Show more" ↔ "Show less".
+**Location**: step2.js, look for scope/truncat/expand in function names.
+
+### UI Bug 2: PDF viewer separate window (step2.js)
+
+**Current behavior**: PDF renders inline in the review step.
+**Expected**: A "View PDF" button opens window.open() with a blob URL.
+Inline viewer removed entirely.
+**Location**: step2.js, look for PDF/viewer/embed/iframe references.
+
+### NEXT — Workspace Architecture
+
+- docs/ context files are the source of truth for each domain
+- .planning/phases/ is historical archive only — never load these files
+- This file (claude.md) is always read first
+
+### Test Fixtures
+
+Each folder in testdata/test_solicitations/ contains:
+
+- The PDF
+- \_expected_output.json — ground truth for that format - SAM-export format (W911S2.., N50054..) no expected output, works well
+- \_failed_parse.png — screenshot of current wrong output (where applicable)
+
+Claude Code should validate extraction output against \_expected_output.json if they are available.
+
+## Key Decisions Log
+
+| Decision                               | Rationale                                             |
+| -------------------------------------- | ----------------------------------------------------- |
+| window.X globals over ES modules       | nodeIntegration:false blocks require() in renderer    |
+| data-\* attribute delegation           | Consistent event wiring without inline handlers       |
+| :focus-visible over :focus             | Avoids mouse-click outline noise                      |
+| applyTheme on documentElement only     | Single source of truth for CSS selectors              |
+| CONFIDENCE_THRESHOLD = 95              | Auto-approve above threshold; flag below              |
+| psutil lazy-imported in \_watch_parent | Avoids import-time overhead                           |
+| ThreadPoolExecutor for parse timeout   | Wraps parse+extract as unit, prevents partial results |
+| No detached:true in spawn()            | Detached prevents SIGTERM propagation on macOS        |
+
+## Routing Rules
+
+Before any non-trivial task:
+
+1. Read this file (claude.md) for orientation
+2. Read the relevant docs/ file for domain context
+3. Read the relevant source files
+4. Skip .planning/phases/ unless specifically asked about historical decisions
+5. Skip node_modules/, dist/, dist-backend/, build/
+
+For parser work → read docs/field-mapping.md + python/extractor.py
+For UI work → read electron/js/modules/step{N}.js + electron/index.html CSS
+For backend work → read python/server.py + relevant module (extractor/generator/validator)
+For quote generation → read python/generator.py + testdata/quote_input.json

@@ -166,6 +166,8 @@ ipcMain.handle('save-quote', async (_, { bytes, name }) => {
 
 ipcMain.handle('open-url', (_, url) => shell.openExternal(url))
 
+ipcMain.handle('open-path', (_, filePath) => shell.openPath(filePath))
+
 ipcMain.handle('generate-pdf', async (_, { html }) => {
   const pdfWin = new BrowserWindow({ show: false, webPreferences: { offscreen: false, contextIsolation: true } })
   try {
