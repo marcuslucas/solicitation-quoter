@@ -54,7 +54,8 @@ def validate_upload(file):
 
     fname = (file.filename or '').lower()
     if fname.endswith('.pdf'):
-        if header[:4] != b'%PDF':
+        # Accept both real PDFs (%PDF) and SAM.gov ZIP bundles (PK) delivered with .pdf extension
+        if header[:4] not in (b'%PDF', b'PK\x03\x04'):
             return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
     elif fname.endswith('.docx') or fname.endswith('.doc'):
         if header[:2] != b'PK':

@@ -85,10 +85,14 @@ testdata/                    # Manual test fixtures
 - Scope truncation expand-in-place (step2.js)
 - PDF viewer opens inline instead of separate window (step2.js), button opens default machine PDF src
 
-### Phase 10 not yet started
+### Phase 10 complete
 
-- extractor.py has no format detection yet
-- No agency_form parser, no formal_rfq parser
+- Multi-format parser working in production (100% confidence on both test solicitations)
+- Zombie process issue documented: always run taskkill on old python
+  processes if extraction reverts to broken results after code changes
+- UI fixes complete: scope toggle in-place, PDF opens via shell.openPath()
+- Minor formatting gaps remain (due_date timezone suffix, multi-address
+  place_of_performance, full period_of_performance) — queued for next session
 
 ## Active Priorities
 
@@ -157,6 +161,22 @@ Claude Code should validate extraction output against \_expected_output.json if 
 | ThreadPoolExecutor for parse timeout   | Wraps parse+extract as unit, prevents partial results |
 | No detached:true in spawn()            | Detached prevents SIGTERM propagation on macOS        |
 
+| place_of_performance multi-address | PDF lists all facility names then all
+addresses separately — interleaved format in expected JSON is not derivable
+from source. Extracted value is the full available block. Expected JSON
+updated to match reality. |
+
+| due_date internal comma (formal_rfq) | Raw PDF text contains "09/02/2025,
+at 2:00 pm" — comma is in the source, not a parser artifact. Expected JSON
+updated to match raw value. |
+
+| issuing_agency separator (formal_rfq) | PDF has org lines on separate lines
+with no separator — joined with comma. Expected JSON updated to match. |
+
+| Zombie process failure mode | If live extraction reverts to broken results
+after code changes, run taskkill /F /IM python.exe and restart npm start
+before debugging anything else. |
+
 ## Routing Rules
 
 Before any non-trivial task:
@@ -171,3 +191,7 @@ For parser work → read docs/field-mapping.md + python/extractor.py
 For UI work → read electron/js/modules/step{N}.js + electron/index.html CSS
 For backend work → read python/server.py + relevant module (extractor/generator/validator)
 For quote generation → read python/generator.py + testdata/quote_input.json
+
+## Notes
+
+If live extraction shows pre-Phase-10 results after code changes, run taskkill /F /IM python.exe and restart npm start before debugging anything else.

@@ -2,21 +2,21 @@
 
 ## Completed (v1.0)
 
-| Phase | Summary | Date |
-|-------|---------|------|
-| 1. Security Hardening | API key server-side only, magic-byte upload validation, temp file cleanup, safeStorage warnings | 2026-03-18 |
-| 2. Frontend Modularization | Split 2100-line index.html into per-step JS modules, zero inline handlers | 2026-03-18 |
-| 3. Backend Structure | Extracted extractor.py, generator.py, constants.py from server.py | 2026-03-18 |
-| 4. CSS Design Tokens | Semantic token system, all themes tokenized, no hardcoded values | 2026-03-22 |
-| 5. Interactive States | hover/focus-visible/active states, button variants (absorbed into Phase 4) | 2026-03-22 |
-| 6. Error States | Specific parse/generation errors, SAM.gov fallback, inline form validation | 2026-03-23 |
-| 7. Loading & Progress | Multi-stage spinners, button disable guards during async ops | 2026-03-23 |
-| 8. Data Quality | Confidence scoring, scope truncation banners, PDF.js viewer, NAICS/PSC validation | 2026-03-24 |
-| 9. Reliability & Config | Configurable port, zombie-process fix, parse timeout, production app ID | 2026-03-29 |
+| Phase                      | Summary                                                                                         | Date       |
+| -------------------------- | ----------------------------------------------------------------------------------------------- | ---------- |
+| 1. Security Hardening      | API key server-side only, magic-byte upload validation, temp file cleanup, safeStorage warnings | 2026-03-18 |
+| 2. Frontend Modularization | Split 2100-line index.html into per-step JS modules, zero inline handlers                       | 2026-03-18 |
+| 3. Backend Structure       | Extracted extractor.py, generator.py, constants.py from server.py                               | 2026-03-18 |
+| 4. CSS Design Tokens       | Semantic token system, all themes tokenized, no hardcoded values                                | 2026-03-22 |
+| 5. Interactive States      | hover/focus-visible/active states, button variants (absorbed into Phase 4)                      | 2026-03-22 |
+| 6. Error States            | Specific parse/generation errors, SAM.gov fallback, inline form validation                      | 2026-03-23 |
+| 7. Loading & Progress      | Multi-stage spinners, button disable guards during async ops                                    | 2026-03-23 |
+| 8. Data Quality            | Confidence scoring, scope truncation banners, PDF.js viewer, NAICS/PSC validation               | 2026-03-24 |
+| 9. Reliability & Config    | Configurable port, zombie-process fix, parse timeout, production app ID                         | 2026-03-29 |
 
 All 32 v1 requirements verified complete.
 
-## Active — Phase 10: Multi-Format Parser
+## Completed — Phase 10: Multi-Format Parser
 
 **Problem**: Extractor only handles SAM-export format. VA agency forms and formal RFQ documents fail to parse.
 **Constraint**: No AI dependency for parsing — all extraction must work with regex/rules for privacy.
@@ -37,15 +37,15 @@ All 32 v1 requirements verified complete.
 
 ## Backlog (v2)
 
-| Item | Description |
-|------|-------------|
+| Item    | Description                                                            |
+| ------- | ---------------------------------------------------------------------- |
 | TEST-01 | Unit tests for extraction logic (regex patterns against known formats) |
-| TEST-02 | Integration tests for /parse and /generate_quote routes |
-| TEST-03 | E2E smoke test for full wizard flow |
-| UX-01 | Multi-page scope of work in generated quote |
-| UX-02 | Preview pane for generated quote before download |
-| UX-03 | Keyboard navigation throughout wizard |
-| UX-04 | Undo/redo for line items table |
+| TEST-02 | Integration tests for /parse and /generate_quote routes                |
+| TEST-03 | E2E smoke test for full wizard flow                                    |
+| UX-01   | Multi-page scope of work in generated quote                            |
+| UX-02   | Preview pane for generated quote before download                       |
+| UX-03   | Keyboard navigation throughout wizard                                  |
+| UX-04   | Undo/redo for line items table                                         |
 
 ## Unresolved Concerns
 

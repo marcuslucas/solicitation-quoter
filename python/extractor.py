@@ -40,25 +40,90 @@ def parse_docx(filepath):
 
 
 def parse_document(filepath):
-    ext = Path(filepath).suffix.lower()
-    if ext == ".pdf":    return parse_pdf(filepath)
-    if ext in (".docx",".doc"): return parse_docx(filepath)
-    if ext == ".txt":
-        return open(filepath, encoding="utf-8", errors="ignore").read()
-    raise ValueError(f"Unsupported file type: {ext}")
+    """
+    Extract text from a document file.
+
+    Delegates to document_loader.load_document() which detects the actual file
+    type by magic bytes (not extension). Returns the full text string.
+    Raises ValueError if the format is not supported and no text was extracted.
+    """
+    from document_loader import load_document
+    result = load_document(filepath)
+    if result.error and not result.text.strip():
+        raise ValueError(result.error)
+    return result.text
 
 
 # ── FORMAT DETECTION ──────────────────────────────────────────────────────────
 
 def detect_format(text):
-    """Identify the solicitation format from the document text."""
-    first_1000 = text[:1000]
-    if "Notice ID:" in first_1000:
-        return "sam_export"
-    if re.search(r"SOLICITATION NUMBER\*", first_1000):
-        return "agency_form"
-    if "Issuing Office:" in first_1000 or re.search(r"\bSECTION\s+[A-E]\b", text):
-        return "formal_rfq"
+    """
+    Identify the solicitation format by scoring multiple fingerprint patterns.
+
+    Formats scored:
+      'sam_export'  — SAM.gov structured notice export
+      'agency_form' — VA/agency combined synopsis form (SOLICITATION NUMBER*)
+      'formal_rfq'  — Formal RFQ with cover page + SECTION A/B/C/D/E
+      'sf1449'      — SF-1449 Solicitation/Contract/Order for Commercial Products
+
+    Returns the format name with the highest score when score >= 3, else 'unknown'.
+    Scoring beats first-match cascades when multiple formats share keywords
+    (e.g. 'SOLICITATION NUMBER' appears in both agency_form and sf1449).
+    """
+    first_2000 = text[:2000]
+    first_5000 = text[:5000]
+
+    scores = {
+        "sam_export": 0,
+        "agency_form": 0,
+        "formal_rfq": 0,
+        "sf1449": 0,
+    }
+
+    # ── sam_export ────────────────────────────────────────────────────────────
+    if "Notice ID:" in first_2000:
+        scores["sam_export"] += 3
+    if "Combined Synopsis/Solicitation Details" in first_2000:
+        scores["sam_export"] += 2
+    if "Primary Contact Name:" in first_5000:
+        scores["sam_export"] += 1
+    if "Notice Details" in first_5000:
+        scores["sam_export"] += 1
+
+    # ── agency_form ───────────────────────────────────────────────────────────
+    if re.search(r"SOLICITATION NUMBER\*", first_2000):
+        scores["agency_form"] += 3
+    if "POINT OF CONTACT*" in text:
+        scores["agency_form"] += 2
+    if "RESPONSE DATE/TIME/ZONE" in first_2000:
+        scores["agency_form"] += 1
+
+    # ── formal_rfq ────────────────────────────────────────────────────────────
+    if "Issuing Office:" in first_2000:
+        scores["formal_rfq"] += 3
+    if re.search(r"\bSECTION\s+[A-E]\b", text):
+        scores["formal_rfq"] += 2
+    if "Quotation Due Date:" in first_2000:
+        scores["formal_rfq"] += 1
+
+    # ── sf1449 ────────────────────────────────────────────────────────────────
+    if "STANDARD FORM 1449" in first_5000:
+        scores["sf1449"] += 3
+    if "Solicitation/Contract/Order for Commercial" in first_2000:
+        scores["sf1449"] += 3
+    if re.search(r"SECTION\s+I\s+SCHEDULES", text):
+        scores["sf1449"] += 2
+    if re.search(r"SECTION\s+II\s+CONTRACT\s+CLAUSES", text):
+        scores["sf1449"] += 2
+    if "SCHEDULE OF SUPPLIES/SERVICES" in first_2000:
+        scores["sf1449"] += 1
+
+    best = max(scores, key=scores.get)
+    if scores[best] >= 3:
+        print(f"[detect_format] scores={scores} -> {best}")
+        return best
+
+    print(f"[detect_format] scores={scores} -> unknown")
     return "unknown"
 
 
@@ -342,6 +407,162 @@ def extract_formal_rfq(text):
     return {k: v for k, v in d.items() if v not in ("", [], None)}
 
 
+def extract_sf1449(text):
+    """
+    Extract fields from SF-1449 Solicitation/Contract/Order for Commercial Products.
+
+    Fingerprint: 'STANDARD FORM 1449' or 'Solicitation/Contract/Order for Commercial'
+    Structure: Numbered blocks on page 1 (5=sol#, 6=issue date, 7=contact/due date,
+    9=issuing office, 10=set-aside/NAICS, 14=method), then SECTION I/II/III.
+
+    All patterns use re.IGNORECASE | re.MULTILINE.
+    Returns a dict; keys with empty/None values are omitted.
+    """
+    def find(patterns):
+        for p in patterns:
+            m = re.search(p, text, re.IGNORECASE | re.MULTILINE | re.DOTALL)
+            if m:
+                v = (m.group(1) if m.lastindex else m.group(0)).strip()
+                if v:
+                    return v
+        return ""
+
+    d = {}
+
+    # Block 5 — Solicitation Number
+    # Layout: "5.SOLICITATION NUMBER 6.SOLICITATION\nISSUE DATE\n<SOL_NUM> <DATE>"
+    d["solicitation_number"] = find([
+        r"5\.SOLICITATION\s+NUMBER\s+6\.SOLICITATION\s*\n\s*ISSUE\s+DATE\s*\n\s*([A-Z0-9]{10,})\s",
+        r"(?:SOLICITATION\s+NUMBER)\s*\n?\s*([A-Z0-9]{10,})\b",
+        # Fallback: any alphanumeric token that looks like a solicitation number near page start
+        r"\b(70B\w+)\b",
+    ])
+
+    # Block 6 — Solicitation Issue Date (posting date)
+    # Layout: same line as solicitation number: "<SOL_NUM> <MM/DD/YYYY>"
+    d["posting_date"] = find([
+        r"ISSUE\s+DATE\s*\n\s*\S+\s+(\d{2}/\d{2}/\d{4})",
+        r"SOLICITATION\s+ISSUE\s+DATE\s*\n?\s*\S+\s+(\d{2}/\d{2}/\d{4})",
+    ])
+
+    # Block 7 — Contact name and email
+    # Layout: "INFORMATION CALL: Crockett, John john.t.crockett@cbp.dhs.gov 05/15/2026 2:00PM ET"
+    contact_m = re.search(
+        r"INFORMATION\s+CALL:\s*(.*?)\s+([\w.%+\-]+@[\w.\-]+\.\w{2,})",
+        text, re.IGNORECASE
+    )
+    if contact_m:
+        d["contact_name"] = contact_m.group(1).strip()
+        d["contact_email"] = contact_m.group(2).strip()
+
+    if not d.get("contact_email"):
+        d["contact_email"] = find([r"([\w.%+\-]+@[\w.\-]+\.(?:gov|mil|us|com))\b"])
+
+    # Block 8 — Offer Due Date / Local Time
+    # Layout: same line as contact: "... <email> MM/DD/YYYY H:MMxM TZ"
+    d["due_date"] = find([
+        r"(\d{2}/\d{2}/\d{4}\s+\d{1,2}:\d{2}[AP]M\s+\w+)",
+        r"OFFER\s+DUE\s+DATE[^\n]*\n.*?(\d{2}/\d{2}/\d{4})",
+    ])
+
+    # Block 9 — Issued By (issuing agency)
+    # Layout (pdfplumber): "ISSUED BY CODE 7014 10.THIS ACQUISITION...\nDHS - Customs & Border Protection SMALL BUSINESS...\n...\nMission Support Contracting Division NAICS:"
+    # Strategy: extract org name line directly, then find division line.
+    agency_m = re.search(
+        r"\n([A-Z][A-Z\s\-&]+(?:Protection|Agency|Command|Service|Office|Bureau))\s+(?:SMALL|WOMEN|HUBZONE|ELIGIBLE|UNRESTRICTED)",
+        text, re.IGNORECASE
+    )
+    if agency_m:
+        line1 = agency_m.group(1).strip()
+        # Find the contracting division line (mixed case, before "NAICS:")
+        div_m = re.search(
+            r"([A-Z][a-z].+?(?:Division|Office|Command|Department|Directorate))\s+(?:NAICS|CODE)",
+            text, re.IGNORECASE
+        )
+        if div_m:
+            d["issuing_agency"] = line1 + ", " + div_m.group(1).strip()
+        else:
+            d["issuing_agency"] = line1
+
+    # Block 10 — Set-Aside percentage and NAICS
+    # Layout: "SET ASIDE : 100 % FOR:\nDHS - ... SMALL BUSINESS WOMEN-OWNED..."
+    sa_m = re.search(r"SET\s+ASIDE\s*:\s*(\d+)\s*%\s*FOR", text, re.IGNORECASE)
+    if sa_m:
+        d["set_aside"] = f"Small Business Set-Aside {sa_m.group(1)}%"
+
+    # NAICS — appears after "NAICS:\n" with noise lines in between
+    d["naics_code"] = find([
+        r"NAICS:\s*\n.*?(\d{6})",
+        r"NAICS[:\s]+(\d{5,6})\b",
+    ])
+
+    # Block 14 — Method of solicitation (RFQ / IFB / RFP)
+    # Prefer prose reference ("request for proposal (RFP)") over the checkbox list
+    d["solicitation_type"] = find([
+        r"request\s+for\s+proposal\s+\(([A-Z]+)\)",
+        r"request\s+for\s+quotation\s+\(([A-Z]+)\)",
+        r"invitation\s+for\s+bid\s+\(([A-Z]+)\)",
+        r"METHOD\s+OF\s+SOLICITATION\s*\n?\s*(RFQ|IFB|RFP)\b",
+    ])
+
+    # Project title — item description line in SCHEDULE OF SUPPLIES/SERVICES table
+    # Layout: "ITEM NUMBER SCHEDULE OF SUPPLIES/SERVICES QUANTITY UNIT...\n10 <Title>"
+    d["project_title"] = find([
+        r"SCHEDULE\s+OF\s+SUPPLIES/SERVICES\s+QUANTITY[^\n]*\n\s*\d+\s+(.+?)(?:\n|$)",
+        r"(?:Subject|Title)[:\s]+(.+?)(?:\n|$)",
+    ])
+
+    # ── Section I content (actual body, not TOC reference) ───────────────────
+    # TOC lines have dotted fillers; actual section starts "SECTION I SCHEDULES\n"
+    sec_i_m = re.search(r"SECTION I SCHEDULES\s*\n(.+?)(?=SECTION II)", text, re.DOTALL | re.IGNORECASE)
+    sec_i = sec_i_m.group(1) if sec_i_m else ""
+
+    # I.2 Minimum Guarantee
+    mg_m = re.search(r"MINIMUM\s+GUARANTEE[^$]*\$([\d,]+\.?\d*)", sec_i or text, re.IGNORECASE)
+    if mg_m:
+        d["minimum_guarantee"] = "$" + mg_m.group(1)
+
+    # I.3 Maximum Amount (estimated value)
+    # Pattern: "not exceed a total of $X"
+    ev_m = re.search(
+        r"(?:not\s+exceed[^$]*|MAXIMUM\s+AMOUNT[^\n]*\n.*?not\s+exceed[^$]*)\$([\d,]+\.?\d*)",
+        sec_i or text, re.IGNORECASE | re.DOTALL
+    )
+    if ev_m:
+        d["estimated_value"] = "$" + ev_m.group(1)
+
+    # I.5 Period of Performance
+    pop_m = re.search(r"I\.5\s+PERIOD\s+OF\s+PERFORMANCE[:\s]+(.+?)(?=I\.6)", sec_i, re.DOTALL | re.IGNORECASE)
+    if pop_m:
+        raw_pop = re.sub(r"\s+", " ", pop_m.group(1)).strip()
+        d.update(_scope_block.__func__(raw_pop) if hasattr(_scope_block, '__func__') else {})
+        d["period_of_performance"] = raw_pop[:500]  # cap at 500 chars
+
+    # Contract type: IDIQ + FFP
+    has_idiq = bool(re.search(r"\b(?:IDIQ|ID/IQ|indefinite\s+delivery)", text, re.IGNORECASE))
+    has_ffp = bool(re.search(r"\bfirm\s+fixed\s+price\b", text, re.IGNORECASE))
+    if has_idiq and has_ffp:
+        d["contract_type"] = "IDIQ with Firm Fixed Price delivery orders"
+    elif has_idiq:
+        d["contract_type"] = "IDIQ"
+
+    # Scope of work — Section I description (I.1) or Additional Information prose
+    scope_src = sec_i if sec_i else text
+    scope_m = re.search(
+        r"I\.1\s+DESCRIPTION[:\s]+(.+?)(?=I\.2|MINIMUM\s+GUARANTEE|\Z)",
+        scope_src, re.DOTALL | re.IGNORECASE
+    )
+    if not scope_m:
+        scope_m = re.search(
+            r"ADDITIONAL\s+INFORMATION[:\s]*\n(.+?)(?=\n3[12]\.|Page\s+\d|\Z)",
+            text, re.DOTALL | re.IGNORECASE
+        )
+    raw_scope = scope_m.group(1) if scope_m else scope_src[:SCOPE_MAX * 2]
+    d.update(_scope_block(raw_scope))
+
+    return {k: v for k, v in d.items() if v not in ("", [], None)}
+
+
 # ── GENERIC FALLBACK ──────────────────────────────────────────────────────────
 
 def apply_generic_fallback(d, text):
@@ -420,6 +641,8 @@ def extract_data(text, api_key=""):
         d = extract_agency_form(text)
     elif format_name == "formal_rfq":
         d = extract_formal_rfq(text)
+    elif format_name == "sf1449":
+        d = extract_sf1449(text)
     else:
         d = {}
 
