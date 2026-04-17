@@ -263,6 +263,25 @@ function setupLineItemTabNav() {
     const inputs = [...tbody.querySelectorAll('input,select,textarea')]
     const idx = inputs.indexOf(document.activeElement)
     if (idx === -1) return
+    // Vertical tab on unit_price: jump to next/prev row's unit_price
+    if (document.activeElement.dataset.col === 'unit_price') {
+      e.preventDefault()
+      const priceInputs = [...tbody.querySelectorAll('input[data-col="unit_price"]')]
+      const pIdx = priceInputs.indexOf(document.activeElement)
+      if (!e.shiftKey) {
+        if (priceInputs[pIdx + 1]) { priceInputs[pIdx + 1].focus(); priceInputs[pIdx + 1].select?.() }
+        else {
+          addRow()
+          requestAnimationFrame(() => {
+            const all = document.querySelectorAll('#li-tbody input[data-col="unit_price"]')
+            if (all.length) all[all.length - 1].focus()
+          })
+        }
+      } else {
+        if (priceInputs[pIdx - 1]) { priceInputs[pIdx - 1].focus(); priceInputs[pIdx - 1].select?.() }
+      }
+      return
+    }
     e.preventDefault()
     const next = e.shiftKey ? inputs[idx - 1] : inputs[idx + 1]
     if (next) {
@@ -275,6 +294,54 @@ function setupLineItemTabNav() {
   })
 }
 
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+
+function buildDetailPanel(item) {
+  const source = item._source || 'unknown'
+  const badgeClass = { 'SOW+XLSX': 'badge-sow-xlsx', 'SOW': 'badge-sow', 'XLSX': 'badge-xlsx' }[source] || 'badge-unknown'
+  const periods = item.quantities_by_period || {}
+  const pv = k => periods[k] != null ? Number(periods[k]).toLocaleString() : '—'
+  const hasDetail = item.spec_text || item.manufacturer_ref || item.part_number
+
+  const metaHtml = `<div class="dp-meta">
+    <span class="dp-section">Section: ${window.esc(item.sow_section || '—')}</span>
+    <span class="dp-badge ${badgeClass}">${window.esc(source)}</span>
+  </div>`
+
+  const refsHtml = (item.manufacturer_ref || item.part_number) ? `<div class="dp-refs">
+    <span>Manufacturer: <strong>${window.esc(item.manufacturer_ref || '—')}</strong></span>
+    <span>Part #: <strong>${window.esc(item.part_number || '—')}</strong></span>
+  </div>` : ''
+
+  const qtyHtml = `<div class="dp-quantities">
+    <span class="dp-qty-label">Estimated Qty:</span>
+    <span>P1: ${pv('period_1')}</span>
+    <span>P2: ${pv('period_2')}</span>
+    <span>P3: ${pv('period_3')}</span>
+    <span>P4: ${pv('period_4')}</span>
+    <span>P5: ${pv('period_5')}</span>
+    <span class="dp-qty-total">Total: ${item.qty_total != null ? Number(item.qty_total).toLocaleString() : '—'}</span>
+  </div>`
+
+  const specHtml = item.spec_text ? `<div class="dp-spec">
+    <span class="dp-spec-label">Specification:</span>
+    <p class="dp-spec-text">${window.esc(item.spec_text)}</p>
+  </div>` : ''
+
+  const emptyMsg = !hasDetail ? `<p class="dp-empty">No additional detail available</p>` : ''
+
+  const viewBtn = (item.source_file && item.source_page != null) ? `<div class="dp-actions">
+    <button class="btn-view-source"
+            data-file="${window.esc(item.source_file)}"
+            data-page="${item.source_page}"
+            data-search="${window.esc((item.spec_text || '').slice(0, 80))}">
+      View in Source PDF →
+    </button>
+  </div>` : ''
+
+  return `<div class="detail-panel">${metaHtml}${refsHtml}${qtyHtml}${specHtml}${emptyMsg}${viewBtn}</div>`
+}
+
 // ── EVENT DELEGATION: LINE ITEMS ──────────────────────────────────────────────
 
 function wireLineItemDelegation() {
@@ -284,7 +351,7 @@ function wireLineItemDelegation() {
     const input = e.target.closest('input, select')
     if (!input || !input.dataset.col) return
     const row = input.closest('tr')
-    const rows = [...tbody.querySelectorAll('tr')]
+    const rows = [...tbody.querySelectorAll('tr.lt-item-row')]
     const i = rows.indexOf(row)
     if (i === -1) return
     window.S.items[i][input.dataset.col] = input.value
@@ -298,10 +365,43 @@ function wireLineItemDelegation() {
     }
   })
   tbody.addEventListener('click', e => {
+    // Expand/collapse detail panel
+    const expandBtn = e.target.closest('.expand-btn')
+    if (expandBtn) {
+      const row = expandBtn.closest('tr')
+      const itemRows = [...tbody.querySelectorAll('tr.lt-item-row')]
+      const i = itemRows.indexOf(row)
+      if (i === -1) return
+      const isOpen = expandBtn.classList.contains('open')
+      tbody.querySelectorAll('.detail-row').forEach(r => r.remove())
+      tbody.querySelectorAll('.expand-btn.open').forEach(b => {
+        b.classList.remove('open')
+        b.setAttribute('aria-expanded', 'false')
+      })
+      if (!isOpen) {
+        expandBtn.classList.add('open')
+        expandBtn.setAttribute('aria-expanded', 'true')
+        const detailTr = document.createElement('tr')
+        detailTr.className = 'detail-row'
+        const td = document.createElement('td')
+        td.colSpan = row.cells.length
+        td.innerHTML = buildDetailPanel(window.S.items[i])
+        detailTr.appendChild(td)
+        row.insertAdjacentElement('afterend', detailTr)
+      }
+      return
+    }
+    // View source PDF (Phase 3 placeholder — Phase 4 wires real handler)
+    const viewBtn = e.target.closest('.btn-view-source')
+    if (viewBtn) {
+      console.log('View source:', viewBtn.dataset.file, viewBtn.dataset.page, viewBtn.dataset.search)
+      return
+    }
+    // Dup / Del
     const btn = e.target.closest('button[data-action]')
     if (!btn) return
     const row = btn.closest('tr')
-    const i = [...tbody.querySelectorAll('tr')].indexOf(row)
+    const i = [...tbody.querySelectorAll('tr.lt-item-row')].indexOf(row)
     if (i === -1) return
     if (btn.dataset.action === 'dup') dupRow(i)
     if (btn.dataset.action === 'del') delRow(i)
@@ -410,13 +510,14 @@ function step3(c) {
   }
 
   const rows = window.S.items.map((it, i) => `
-    <tr>
-      <td style="text-align:center;color:var(--color-text-muted)">${i + 1}</td>
+    <tr class="lt-item-row">
+      <td class="lt-col-expand"><button class="expand-btn" data-idx="${i}" aria-expanded="false" aria-label="Show item details">&#9654;</button></td>
+      <td class="lt-col-num">${i + 1}</td>
       <td><input data-col="description" value="${window.esc(it.description || '')}" placeholder="Item description" /></td>
       <td><input data-col="size" value="${window.esc(String(it.size || ''))}" style="max-width:80px" /></td>
       <td><input data-col="unit" value="${window.esc(String(it.unit || 'EA'))}" style="max-width:55px" placeholder="EA" /></td>
-      <td><input type="number" data-col="qty" value="${window.esc(String(it.qty || ''))}" min="0" style="max-width:80px;background:var(--color-surface-raised);border:1px solid var(--color-border)" /></td>
-      <td><input type="number" data-col="unit_price" value="${window.esc(String(it.unit_price || ''))}" min="0" step="0.01" style="background:var(--color-surface-raised);border:1px solid var(--color-border)" /></td>
+      <td><input type="number" data-col="qty" class="lt-input-qty" value="${window.esc(String(it.qty || ''))}" min="0" style="background:var(--color-surface-raised);border:1px solid var(--color-border)" /></td>
+      <td><input type="number" data-col="unit_price" class="lt-input-price" value="${window.esc(String(it.unit_price || ''))}" min="0" step="0.01" style="background:var(--color-surface-raised);border:1px solid var(--color-border)" /></td>
       <td style="text-align:right;color:var(--color-primary)" id="lt${i}">${lineTotal(it)}</td>
       <td><div class="row-actions">
         <button class="btn btn-ghost btn-sm" data-action="dup">Dup</button>
@@ -492,17 +593,18 @@ function step3(c) {
       <div style="overflow-x:auto">
         <table class="tbl">
           <thead><tr>
-            <th style="width:36px">#</th><th>Description</th><th style="width:85px">Size/Type</th>
+            <th class="lt-col-expand"></th>
+            <th class="lt-col-num" style="width:36px">#</th><th>Description</th><th style="width:85px">Size/Type</th>
             <th style="width:60px">UOM</th><th style="width:75px">Qty</th>
             <th style="width:110px">Unit Price</th>
             <th style="width:110px;text-align:right">Total</th><th style="width:72px"></th>
           </tr></thead>
           <tbody id="li-tbody">${rows}</tbody>
           <tfoot>
-            <tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Subtotal</td><td style="text-align:right" id="gt">$${grand.toFixed(2)}</td><td></td></tr>
-            ${fr ? `<tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Freight</td><td style="text-align:right">$${fr.toFixed(2)}</td><td></td></tr>` : ''}
-            ${tx ? `<tr class="tfoot"><td colspan="6" style="text-align:right;padding-right:16px">Tax (${tx}%)</td><td style="text-align:right">$${tax.toFixed(2)}</td><td></td></tr>` : ''}
-            <tr class="tfoot" style="font-size:14px"><td colspan="6" style="text-align:right;padding-right:16px">GRAND TOTAL</td><td style="text-align:right;font-size:15px" id="ft">$${final.toFixed(2)}</td><td></td></tr>
+            <tr class="tfoot"><td colspan="7" style="text-align:right;padding-right:16px">Subtotal</td><td style="text-align:right" id="gt">$${grand.toFixed(2)}</td><td></td></tr>
+            ${fr ? `<tr class="tfoot"><td colspan="7" style="text-align:right;padding-right:16px">Freight</td><td style="text-align:right">$${fr.toFixed(2)}</td><td></td></tr>` : ''}
+            ${tx ? `<tr class="tfoot"><td colspan="7" style="text-align:right;padding-right:16px">Tax (${tx}%)</td><td style="text-align:right">$${tax.toFixed(2)}</td><td></td></tr>` : ''}
+            <tr class="tfoot" style="font-size:14px"><td colspan="7" style="text-align:right;padding-right:16px">GRAND TOTAL</td><td style="text-align:right;font-size:15px" id="ft">$${final.toFixed(2)}</td><td></td></tr>
           </tfoot>
         </table>
       </div>

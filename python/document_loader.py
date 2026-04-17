@@ -182,6 +182,23 @@ def _load_zip_bundle(filepath: str) -> DocumentResult:
             if "word/document.xml" in names:
                 return _load_docx(filepath)
 
+            # XLSX: ZIP-based spreadsheet — text extraction not applicable.
+            # Pricing data is read directly via extract_pricing_spreadsheet().
+            # Return empty result without error so classify_document() routes it correctly.
+            xlsx_signatures = any(
+                n.startswith('xl/') or n == '[Content_Types].xml'
+                for n in names
+            )
+            if xlsx_signatures:
+                return DocumentResult(
+                    text="",
+                    page_count=0,
+                    source_format="xlsx",
+                    has_images=False,
+                    page_texts=[],
+                    error=None
+                )
+
     except zipfile.BadZipFile as e:
         return DocumentResult(text="", error=f"Invalid ZIP archive: {e}")
     except Exception as e:

@@ -435,7 +435,7 @@ def extract_sf1449(text):
         r"5\.SOLICITATION\s+NUMBER\s+6\.SOLICITATION\s*\n\s*ISSUE\s+DATE\s*\n\s*([A-Z0-9]{10,})\s",
         r"(?:SOLICITATION\s+NUMBER)\s*\n?\s*([A-Z0-9]{10,})\b",
         # Fallback: any alphanumeric token that looks like a solicitation number near page start
-        r"\b(70B\w+)\b",
+        r"\b([A-Z]{1,6}\d{2,}[A-Z0-9\-]{2,})\b",
     ])
 
     # Block 6 — Solicitation Issue Date (posting date)
@@ -546,16 +546,16 @@ def extract_sf1449(text):
     elif has_idiq:
         d["contract_type"] = "IDIQ"
 
-    # Scope of work — Section I description (I.1) or Additional Information prose
+    # Scope of work — ADDITIONAL INFORMATION (actual requirement) preferred over I.1 (FAR boilerplate)
     scope_src = sec_i if sec_i else text
     scope_m = re.search(
-        r"I\.1\s+DESCRIPTION[:\s]+(.+?)(?=I\.2|MINIMUM\s+GUARANTEE|\Z)",
-        scope_src, re.DOTALL | re.IGNORECASE
+        r"ADDITIONAL\s+INFORMATION[:\s]*\n(.+?)(?=\n32[a-z]\.|Page\s+\d|\Z)",
+        text, re.DOTALL | re.IGNORECASE
     )
     if not scope_m:
         scope_m = re.search(
-            r"ADDITIONAL\s+INFORMATION[:\s]*\n(.+?)(?=\n3[12]\.|Page\s+\d|\Z)",
-            text, re.DOTALL | re.IGNORECASE
+            r"I\.1\s+DESCRIPTION[:\s]+(.+?)(?=I\.2|MINIMUM\s+GUARANTEE|\Z)",
+            scope_src, re.DOTALL | re.IGNORECASE
         )
     raw_scope = scope_m.group(1) if scope_m else scope_src[:SCOPE_MAX * 2]
     d.update(_scope_block(raw_scope))
@@ -673,6 +673,376 @@ def extract(text):
     return extract_sam_export(text)
 
 
+# ── SOW / XLSX LINE ITEM EXTRACTION ──────────────────────────────────────────
+
+# Matches terminal SOW section headers: "4.X.Y. Title." or "4.X.Y Title."
+# Trailing period after section number is optional (some sections omit it).
+# Title-ending period is optional; lookahead for newline handles titles ending with ')'.
+_SOW_SECTION_RE = re.compile(
+    r"^(4\.\d{1,2}\.\d{1,2})\.?\s+"
+    r"((?:[^.()\n]|\([^)]*\))+)"
+    r"(?:\.|(?=[\r\n]))",          # <-- was: (?:\.(?=\n))
+    re.MULTILINE
+)
+
+# Manufacturer reference patterns.
+# Use \s+ between words to tolerate line-wraps inside the phrase.
+_PAT_DEF_TECH = re.compile(
+    r"equal\s+to\s+or\s+(?:better|greater)\s+than\s+([\w\s]+?)\s+part\s+number\s+([\w\-/]+)",
+    re.IGNORECASE
+)
+# Avon mask model: "equal to or better than the Avon PC50, Protective Mask"
+_PAT_AVON_MODEL = re.compile(
+    r"equal\s+to\s+or\s+(?:better|greater)\s+than\s+the\s+Avon\s+([\w]+),\s+Protective",
+    re.IGNORECASE
+)
+# Avon part-number: "...Avon Clear Outsert, #70501-156" or "...Avon CTCF50..., 72606/3"
+_PAT_AVON_PART = re.compile(
+    r"equal\s+to\s+or\s+(?:better|greater)\s+than\s+the\s+Avon\s+\w+.*?[,#]\s*([\w\-/]+)",
+    re.IGNORECASE | re.DOTALL
+)
+# Fallback: "part number X" anywhere in body (for unusual phrasing like 4.6.8)
+_PAT_PART_NUM_BARE = re.compile(r"part\s+number\s+([\w\-/]+(?:\s+[A-Z]{1,4})?)", re.IGNORECASE)
+
+
+def _normalize_sow_title(title):
+    """Clean pdfplumber encoding artifacts from SOW section titles.
+
+    The PDF uses smart-quote chars (U+201C/U+201D) as bracket substitutes for
+    some parenthesised phrases, and U+2013 en-dashes for range separators.
+    """
+    # Paired smart-quotes → parens: "Text" → (Text)
+    title = re.sub('\u201c([^\u201c\u201d.()\n]+)\u201d', r'(\1)', title)
+    # Lone opening smart-quote → open paren; auto-balance
+    if '\u201c' in title:
+        title = title.replace('\u201c', '(')
+        diff = title.count('(') - title.count(')')
+        if diff > 0:
+            title += ')' * diff
+    # Lone closing smart-quote → close paren
+    title = title.replace('\u201d', ')')
+    # U+FFFD replacement char flanked by spaces → en-dash
+    title = re.sub('\ufffd', '\u2013', title)
+    # Strip leading "The " article (e.g. "The Low Roll Reloadable Steel Body")
+    title = re.sub(r'^The\s+', '', title)
+    return title.strip()
+
+
+def extract_sow_line_items(text, page_texts=None):
+    """
+    Extract terminal line items from a DHS LLSM Statement of Work PDF text.
+
+    Parses 4.X.Y section headers; handles optional trailing periods and
+    pdfplumber encoding artifacts. Extracts description, manufacturer_ref,
+    part_number, unit (EA/QT/GA/KT). qty and unit_price are placeholders.
+
+    Returns list of dicts sorted by sow_section.
+    """
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    matches = list(_SOW_SECTION_RE.finditer(text))
+
+    page_map = []
+    if page_texts:
+        pos = 0
+        for i, pt in enumerate(page_texts):
+            normalized_pt = pt.replace('\r\n', '\n').replace('\r', '\n')
+            page_map.append((pos, pos + len(normalized_pt), i + 1))
+            pos += len(normalized_pt) + 2  # matches the \n\n join in document_loader
+
+    def find_page(char_pos):
+        for start, end, page_num in page_map:
+            if start <= char_pos < end:
+                return page_num
+        return None
+    if not matches:
+        return []
+
+    # Count raw title occurrences for disambiguation (two-pass: count first)
+    title_counts = {}
+    for m in matches:
+        raw = _normalize_sow_title(m.group(2).strip())
+        title_counts[raw] = title_counts.get(raw, 0) + 1
+
+    items = []
+    for i, m in enumerate(matches):
+        section_num = m.group(1)
+        title = _normalize_sow_title(m.group(2).strip())
+
+        # True body: from end of section header to start of next section header
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = text[body_start:body_end]
+        body_lower = body.lower()
+
+        # Unit from body text
+        if "1-quart" in body_lower:
+            unit = "QT"
+        elif "1-gallon" in body_lower:
+            unit = "GA"
+        elif section_num.startswith("4.8."):
+            unit = "KT"
+        else:
+            unit = "EA"
+
+        # Manufacturer reference and part number
+        manufacturer_ref = None
+        part_number = None
+
+        m_dt = _PAT_DEF_TECH.search(body)
+        if m_dt:
+            manufacturer_ref = "Defense Technologies"
+            raw_pn = m_dt.group(2).strip()
+            # Handle PDF space in part numbers: "8922 NR" → "8922NR"
+            next_text = body[m_dt.end(2):]
+            sfx = re.match(r'\s+([A-Z]{1,4})\b', next_text)
+            if sfx and re.match(r'^[A-Z]+$', sfx.group(1)):
+                raw_pn = raw_pn + sfx.group(1)
+            part_number = raw_pn
+        else:
+            m_am = _PAT_AVON_MODEL.search(body)
+            if m_am:
+                manufacturer_ref = "Avon"
+                part_number = m_am.group(1).strip()
+            else:
+                m_ap = _PAT_AVON_PART.search(body)
+                if m_ap:
+                    manufacturer_ref = "Avon"
+                    part_number = m_ap.group(1).strip().lstrip('#')
+                elif "defense technologies" in body_lower:
+                    # Fallback for unusual phrasing (e.g. "reload, part number 7001CI")
+                    m_pn = _PAT_PART_NUM_BARE.search(body)
+                    if m_pn:
+                        manufacturer_ref = "Defense Technologies"
+                        part_number = re.sub(r'\s+', '', m_pn.group(1).strip())
+
+        # Disambiguation: titles appearing more than once get a body-derived suffix
+        if title_counts.get(title, 0) > 1:
+            if title == "Liquid Smoke Solution":
+                if "1-quart" in body_lower:
+                    title = title + " (1 Quart)"
+                elif "1-gallon" in body_lower:
+                    title = title + " (1 Gallon)"
+            elif title == "Respiratory Protection Mask" and part_number:
+                title = title + f" ({part_number})"
+            elif title == "40mm Multiple Rubber Ball Round":
+                if "60 caliber" in body_lower:
+                    title = title + " (60 cal)"
+                elif "32 caliber" in body_lower:
+                    title = title + " (32 cal)"
+            elif title == "40mm Multiple Rubber Ball Round (Shortened)":
+                if "60 caliber" in body_lower:
+                    title = "40mm Multiple Rubber Ball Round (60 cal) (Shortened)"
+                elif "32 caliber" in body_lower:
+                    title = "40mm Multiple Rubber Ball Round (32 cal) (Shortened)"
+
+        items.append({
+            "sow_section": section_num,
+            "description": title,
+            "manufacturer_ref": manufacturer_ref,
+            "part_number": part_number,
+            "unit": unit,
+            "qty": "N/A",
+            "unit_price": "N/A",
+            "spec_text": body.strip()[:2000],
+            "source_page": find_page(m.start()) if page_map else None,
+        })
+
+    def _section_key(item):
+        return tuple(int(p) for p in item["sow_section"].split(".") if p.isdigit())
+
+    items.sort(key=_section_key)
+    return items
+
+
+def _iter_xlsx_rows(filepath):
+    """Yield rows as lists of cell values. Uses openpyxl if installed; stdlib otherwise."""
+    try:
+        from openpyxl import load_workbook
+        wb = load_workbook(filepath, read_only=True, data_only=True)
+        ws = wb.active
+        for row in ws.rows:
+            yield [cell.value for cell in row]
+        wb.close()
+        return
+    except ImportError:
+        pass
+
+    # stdlib fallback: zipfile + xml.etree.ElementTree
+    import zipfile
+    import xml.etree.ElementTree as ET
+    _NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+
+    with zipfile.ZipFile(filepath) as zf:
+        # Shared strings
+        shared_strings = []
+        if "xl/sharedStrings.xml" in zf.namelist():
+            ss_root = ET.parse(zf.open("xl/sharedStrings.xml")).getroot()
+            for si in ss_root:
+                parts = [elem.text for elem in si.iter(f"{{{_NS}}}t") if elem.text]
+                shared_strings.append("".join(parts))
+
+        # Worksheet
+        ws_root = ET.parse(zf.open("xl/worksheets/sheet1.xml")).getroot()
+        for row_elem in ws_root.iter(f"{{{_NS}}}row"):
+            cells = {}
+            for c in row_elem:
+                ref = c.get("r", "")
+                col_str = re.sub(r"\d", "", ref).upper()
+                col_idx = sum((ord(ch) - ord('A') + 1) * (26 ** (len(col_str) - 1 - k))
+                              for k, ch in enumerate(col_str)) - 1
+                t = c.get("t", "")
+                v_elem = c.find(f"{{{_NS}}}v")
+                if v_elem is None:
+                    continue
+                raw = v_elem.text or ""
+                if t == "s":
+                    cells[col_idx] = shared_strings[int(raw)] if raw.isdigit() else raw
+                elif t == "b":
+                    cells[col_idx] = bool(int(raw))
+                else:
+                    try:
+                        cells[col_idx] = int(raw) if "." not in raw else float(raw)
+                    except (ValueError, TypeError):
+                        cells[col_idx] = raw
+            if cells:
+                max_col = max(cells) + 1
+                yield [cells.get(j) for j in range(max_col)]
+
+
+def extract_pricing_spreadsheet(filepath):
+    """
+    Extract line items from a DHS LLSM pricing XLSX spreadsheet.
+
+    Column layout (0-indexed):
+        0=SOW Section, 1=Description, 2=Part# (always empty),
+        3=Unit Cost P1, 4=Est Qty P1, 5=Sub-Total P1,
+        6=Unit Cost P2, 7=Est Qty P2, 8=Sub-Total P2, ...
+
+    Returns list of dicts with keys:
+        sow_section, description, part_number, manufacturer_ref, unit,
+        qty_period_1, quantities_by_period, qty, unit_price.
+    """
+    def _to_qty(v):
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return None
+
+    items = []
+    for row_vals in _iter_xlsx_rows(filepath):
+        if not row_vals:
+            continue
+        a = row_vals[0] if len(row_vals) > 0 else None
+        if not isinstance(a, str):
+            continue
+        a_str = a.strip()
+        # Must be a terminal item section: exactly 3 numeric parts (e.g. "4.1.1")
+        if not re.match(r'^\d+\.\d+\.\d+$', a_str):
+            continue
+
+        def cell(idx):
+            return row_vals[idx] if idx < len(row_vals) else None
+
+        desc_raw = cell(1)
+        desc = re.sub(r'\s{2,}', ' ', str(desc_raw).strip()) if desc_raw else ""
+
+        q1 = _to_qty(cell(4))
+        q2 = _to_qty(cell(7))
+        q3 = _to_qty(cell(10))
+        q4 = _to_qty(cell(13))
+        q5 = _to_qty(cell(16))
+
+        items.append({
+            "sow_section": a_str,
+            "description": desc,
+            "part_number": None,
+            "manufacturer_ref": None,
+            "unit": "EA",
+            "qty_period_1": q1 if q1 is not None else "N/A",
+            "quantities_by_period": {
+                "period_1": q1,
+                "period_2": q2,
+                "period_3": q3,
+                "period_4": q4,
+                "period_5": q5,
+            },
+            "qty": q1 if q1 is not None else "N/A",
+            "unit_price": "N/A",
+        })
+
+    return items
+
+
+def merge_line_item_sources(sow_items, pricing_items):
+    """
+    Merge SOW line items with XLSX pricing items.
+
+    XLSX provides the complete baseline (all items with quantities).
+    SOW enriches each item with clean description, manufacturer_ref, part_number, unit.
+    """
+    sow_by_section = {item["sow_section"]: item for item in sow_items}
+    xlsx_sections = set()
+    merged = []
+
+    for xlsx_item in pricing_items:
+        section = xlsx_item["sow_section"]
+        xlsx_sections.add(section)
+        merged_item = dict(xlsx_item)
+
+        sow = sow_by_section.get(section)
+        if sow:
+            if sow["description"] and len(sow["description"]) > 3:
+                merged_item["description"] = sow["description"]
+            merged_item["manufacturer_ref"] = sow.get("manufacturer_ref")
+            merged_item["part_number"] = sow.get("part_number")
+            merged_item["unit"] = sow.get("unit", "EA")
+            merged_item["spec_text"] = sow.get("spec_text")
+            merged_item["source_page"] = sow.get("source_page")
+            merged_item["source_file"] = sow.get("source_file")
+
+        merged.append(merged_item)
+
+    # Add any SOW items not in XLSX (guard — should not happen with this fixture)
+    for sow_item in sow_items:
+        if sow_item["sow_section"] not in xlsx_sections:
+            merged.append({
+                **sow_item,
+                "qty_period_1": "N/A",
+                "quantities_by_period": {
+                    "period_1": None, "period_2": None,
+                    "period_3": None, "period_4": None, "period_5": None,
+                },
+                "qty": "N/A",
+            })
+
+    def _section_key(item):
+        return tuple(int(p) for p in item["sow_section"].split(".") if p.isdigit())
+
+    for item in merged:
+        has_sow = bool(item.get("spec_text"))
+        has_xlsx = item.get("qty_period_1") not in (None, "N/A")
+        if has_sow and has_xlsx:
+            item["_source"] = "SOW+XLSX"
+        elif has_sow:
+            item["_source"] = "SOW"
+        elif has_xlsx:
+            item["_source"] = "XLSX"
+        else:
+            item["_source"] = "unknown"
+
+        periods = item.get("quantities_by_period", {})
+        period_values = [v for v in periods.values() if isinstance(v, (int, float))]
+        total = sum(period_values) if period_values else None
+        item["qty_total"] = total
+        if total is not None:
+            item["qty"] = total
+
+    merged.sort(key=_section_key)
+    return merged
+
+
 def extract_line_items(solicitation, text):
     """
     Derive line items from extracted solicitation data and raw text.
@@ -737,3 +1107,144 @@ def extract_line_items(solicitation, text):
     # 3. Fallback: single row from project title
     items.append({"description": base_desc, "size": "N/A", "unit": "EA", "qty": "N/A", "unit_price": "N/A"})
     return items
+
+
+# ── MULTI-FILE BUNDLE PARSING ─────────────────────────────────────────────────
+
+def classify_document(text, filename):
+    """
+    Classify a document as 'main', 'sow', or 'pricing' based on filename and content.
+    """
+    fn = filename.lower()
+    if fn.endswith(('.xlsx', '.xls', '.csv')):
+        return "pricing"
+    if 'pricing' in fn or 'attachment 2' in fn.replace('_', ' ').replace('-', ' '):
+        return "pricing"
+    if 'sow' in fn or 'statement of work' in fn.replace('_', ' '):
+        return "sow"
+    if 'Statement of Work' in text[:500]:
+        return "sow"
+    fmt = detect_format(text)
+    if fmt != 'unknown':
+        return "main"
+    if re.search(r'4\.\d+\.\d+\s+[A-Z]', text[:5000]):
+        return "sow"
+    return "main"
+
+
+def _extract_clin_items(text: str) -> list:
+    """
+    Extract CLIN-numbered line items from SF-1449 and similar DoD solicitations.
+    Used as fallback when extract_sow_line_items() returns no 4.x.x items.
+    Returns list of dicts compatible with the line_items schema.
+    """
+    blocks = re.findall(
+        r"(?:^|\n)(?:CLIN\s*|ITEM\s*(?:NO\.?\s*)?)(\d{4})\s+"
+        r"(.*?)(?=(?:\n(?:CLIN\s*|ITEM\s*(?:NO\.?\s*)?)\d{4}\s)|\Z)",
+        text, re.IGNORECASE | re.DOTALL
+    )
+    if not blocks:
+        return []
+
+    items = []
+    for clin_num, body in blocks:
+        body_clean = re.sub(r"\s+", " ", body).strip()
+
+        desc_m = re.match(r"([^\n.]{5,120})", body_clean)
+        description = desc_m.group(1).strip() if desc_m else body_clean[:120]
+
+        unit_m = re.search(r"\b(Each|EA|Pound|LB|Case|Spool|Box)\b", body_clean, re.IGNORECASE)
+        unit = unit_m.group(1).upper() if unit_m else "EA"
+        if unit == "POUND":
+            unit = "LB"
+
+        items.append({
+            "sow_section":      f"CLIN {clin_num}",
+            "description":      description,
+            "manufacturer_ref": None,
+            "part_number":      None,
+            "unit":             unit,
+            "qty":              "N/A",
+            "unit_price":       "N/A",
+            "spec_text":        body_clean[:2000],
+            "source_page":      None,
+            "source_file":      None,
+            "_source":          "CLIN",
+            "qty_total":        None,
+        })
+
+    return items
+
+
+def parse_solicitation_bundle(files):
+    """
+    Parse a bundle of uploaded files and merge results.
+
+    files: list of dicts with keys: path (str), filename (str)
+
+    1. Load each file with document_loader.load_document()
+    2. Classify each as 'main', 'sow', or 'pricing' using classify_document()
+    3. Extract header fields from the main doc using extract_data()
+    4. Extract SOW line items from sow doc(s) using extract_sow_line_items()
+    5. Extract pricing from xlsx doc(s) using extract_pricing_spreadsheet()
+    6. Merge with merge_line_item_sources(sow_items, pricing_items)
+    7. If no dedicated SOW doc found, try extract_sow_line_items() on main doc text
+    8. Set result['line_items'] = merged items
+    9. Return result dict
+    """
+    from document_loader import load_document
+
+    docs = []
+    for f in files:
+        result = load_document(f["path"])
+        role = classify_document(result.text, f["filename"])
+        print(f"[parse_solicitation_bundle] {f['filename']} -> role={role}, chars={len(result.text)}")
+        docs.append({"role": role, "result": result, "filename": f["filename"], "path": f["path"]})
+
+    # Find main doc — first classified as main, or fall back to first doc overall
+    main_doc = next((d for d in docs if d["role"] == "main"), None)
+    if main_doc is None:
+        main_doc = docs[0] if docs else None
+
+    if main_doc is None:
+        return {}
+
+    # Extract header fields from main doc
+    data = extract_data(main_doc["result"].text)
+
+    # Extract SOW line items from dedicated sow doc(s)
+    sow_docs = [d for d in docs if d["role"] == "sow"]
+    sow_items = []
+    for sow_doc in sow_docs:
+        items = extract_sow_line_items(sow_doc["result"].text, page_texts=sow_doc["result"].page_texts)
+        for item in items:
+            item["source_file"] = sow_doc["filename"]
+        sow_items.extend(items)
+
+    # If no dedicated SOW doc found, try on main doc text
+    if not sow_items:
+        items = extract_sow_line_items(main_doc["result"].text, page_texts=main_doc["result"].page_texts)
+        for item in items:
+            item["source_file"] = main_doc["filename"]
+        sow_items = items
+
+    # Extract pricing from xlsx doc(s)
+    pricing_docs = [d for d in docs if d["role"] == "pricing"]
+    pricing_items = []
+    for pricing_doc in pricing_docs:
+        pricing_items.extend(extract_pricing_spreadsheet(pricing_doc["path"]))
+
+    # Merge and attach to result
+    if sow_items or pricing_items:
+        data["line_items"] = merge_line_item_sources(sow_items, pricing_items)
+        print(f"[parse_solicitation_bundle] line_items={len(data['line_items'])} "
+              f"(sow={len(sow_items)}, pricing={len(pricing_items)})")
+
+    # CLIN fallback — fires only when no 4.x.x SOW items and no pricing XLSX
+    if not data.get("line_items") and main_doc:
+        clin_items = _extract_clin_items(main_doc["result"].text)
+        if clin_items:
+            data["line_items"] = clin_items
+            print(f"[parse_solicitation_bundle] CLIN fallback: {len(clin_items)} items")
+
+    return data

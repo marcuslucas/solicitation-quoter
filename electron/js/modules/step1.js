@@ -23,12 +23,12 @@ function validateDroppedFile(f) {
   if (!f) return false
   // Folders: File object with size 0 and no usable extension, or webkitRelativePath set
   if (f.webkitRelativePath && f.webkitRelativePath !== '') {
-    showFileError('Folders are not supported — please drop a PDF, DOCX, or TXT file.')
+    showFileError('Folders are not supported — please drop a PDF, DOCX, TXT, or XLSX file.')
     return false
   }
   const name = (f.name || '').toLowerCase()
-  if (!name.match(/\.(pdf|docx|doc|txt)$/)) {
-    showFileError('Unsupported file type — only PDF, DOCX, and TXT files are accepted.')
+  if (!name.match(/\.(pdf|docx|doc|txt|xlsx|xls)$/)) {
+    showFileError('Unsupported file type — only PDF, DOCX, TXT, and XLSX files are accepted.')
     return false
   }
   return true
@@ -45,40 +45,55 @@ function showFileError(msg) {
   if (fi) fi.classList.add('hidden')
   const btn = document.getElementById('parse-btn')
   if (btn) btn.disabled = true
-  window.S.file = null; window.S.filePath = null
+  window.S.file = null; window.S.filePath = null; window.S.files = []
 }
 
 function onDrop(e) {
   e.preventDefault()
   document.getElementById('dz').classList.remove('over')
-  const f = e.dataTransfer.files[0]
-  if (f && validateDroppedFile(f)) { window.S.file = f; window.S.filePath = null; showFile(f) }
+  const dropped = Array.from(e.dataTransfer.files).filter(f => validateDroppedFile(f))
+  if (dropped.length) {
+    window.S.files = dropped; window.S.file = dropped[0]; window.S.filePath = null
+    showFiles(dropped)
+  }
 }
 
 async function pickFile() {
-  if (window.api) {
+  const input = document.getElementById('file-input')
+  if (input) {
+    input.value = ''
+    input.click()
+  } else if (window.api) {
     const r = await window.api.openFile()
     if (!r.canceled && r.filePaths[0]) {
-      window.S.filePath = r.filePaths[0]; window.S.file = null
-      showFile({ name: r.filePaths[0].split(/[/\\]/).pop() })
+      window.S.filePath = r.filePaths[0]; window.S.file = null; window.S.files = []
+      showFiles([{ name: r.filePaths[0].split(/[/\\]/).pop() }])
     }
   }
 }
 
-function showFile(f) {
+function showFiles(files) {
   const fi = document.getElementById('file-info'); if (!fi) return
   fi.classList.remove('hidden')
-  document.getElementById('fname').textContent = f.name
-  document.getElementById('fsize').textContent = f.size ? fmt(f.size) : ''
+  const list = document.getElementById('file-list')
+  if (list) {
+    list.innerHTML = files.map(f =>
+      `<div><strong>${esc(f.name)}</strong>${f.size ? `<span style="font-size:11px;margin-left:6px;color:var(--color-text-muted)">${fmt(f.size)}</span>` : ''}</div>`
+    ).join('')
+  }
   document.getElementById('parse-btn').disabled = false
-  document.getElementById('tf').textContent = f.name
+  document.getElementById('tf').textContent = files[0] ? files[0].name : ''
 }
 
+function showFile(f) { showFiles([f]) }
+
 function clearFile() {
-  window.S.file = null; window.S.filePath = null
+  window.S.file = null; window.S.filePath = null; window.S.files = []
   document.getElementById('file-info').classList.add('hidden')
   document.getElementById('parse-btn').disabled = true
   document.getElementById('tf').textContent = ''
+  const input = document.getElementById('file-input')
+  if (input) input.value = ''
 }
 
 async function doParse() {
@@ -93,14 +108,22 @@ async function doParse() {
   const abortTimeout = setTimeout(() => controller.abort(), 30000)
   try {
     // SEC-02/SEC-03: Belt-and-suspenders file type check before upload
-    const fileNameToCheck = window.S.file ? window.S.file.name : (window.S.filePath ? window.S.filePath.split(/[/\\]/).pop() : '')
-    if (!fileNameToCheck.match(/\.(pdf|docx|doc|txt)$/i)) {
-      throw new Error('Unsupported file type — only PDF, DOCX, and TXT files are accepted.')
+    const allFiles = window.S.files && window.S.files.length > 0 ? window.S.files : (window.S.file ? [window.S.file] : [])
+    const hasSolicitation = allFiles.length > 0
+      ? allFiles.some(f => (f.name || '').match(/\.(pdf|docx|doc|txt)$/i))
+      : (window.S.filePath ? window.S.filePath.split(/[/\\]/).pop().match(/\.(pdf|docx|doc|txt)$/i) : false)
+    if (!hasSolicitation) {
+      throw new Error('Please include a PDF or DOCX solicitation document.')
+    }
+    try {
+      await window.api.clearSession(window.S.port)
+    } catch (e) {
+      console.warn('[step1] Session clear failed (non-fatal):', e.message)
     }
     p(15, 'Uploading document...')
     const fd = new FormData()
-    if (window.S.file) {
-      fd.append('file', window.S.file)
+    if (allFiles.length > 0) {
+      allFiles.forEach(f => fd.append('file', f))
     } else if (window.S.filePath) {
       const resp2 = await fetch('file:///'+window.S.filePath.replace(/\\/g,'/')).catch(()=>null)
       if (resp2) {
@@ -123,22 +146,45 @@ async function doParse() {
     if (!data.success) throw new Error(data.error || 'Extraction failed')
     p(100, 'Done!')
     window.S.extracted = data.data
+    window.S.sessionFiles = data._session_files || {}
     // Store confidence data for step 2 rendering (Phase 8)
     window.S.confidence = {
       overallConfidence: data.overallConfidence || null,
       fields: data.fields || [],
       flags: data.flags || []
     }
-    // Store source file type for PDF viewer visibility check
-    const _srcName = window.S.file ? window.S.file.name : (window.S.filePath ? window.S.filePath.split(/[/\\]/).pop() : '')
+    // Store source file type for PDF viewer visibility check (use primary file)
+    const _primaryFile = (window.S.files && window.S.files.length > 0) ? window.S.files[0] : window.S.file
+    const _srcName = _primaryFile ? _primaryFile.name : (window.S.filePath ? window.S.filePath.split(/[/\\]/).pop() : '')
     window.S.sourceType = _srcName.toLowerCase().endsWith('.pdf') ? 'pdf'
       : (_srcName.toLowerCase().endsWith('.docx') || _srcName.toLowerCase().endsWith('.doc')) ? 'docx'
       : 'txt'
     // Store source file reference for PDF viewer (Plan 05)
-    window.S.sourceFile = window.S.file
+    window.S.sourceFile = _primaryFile || window.S.file
     // Populate line items immediately from parse result
+    // Priority: bundle line_items > ai_line_items > quantities
+    const bundleItems = Array.isArray(data.data.line_items) ? data.data.line_items.filter(i=>i&&typeof i==='object') : []
     const aiItems = Array.isArray(data.data.ai_line_items) ? data.data.ai_line_items.filter(i=>i&&typeof i==='object') : []
-    if (aiItems.length) {
+    if (bundleItems.length) {
+      window.S.items = bundleItems.map((i,idx) => ({
+        id:               idx + 1,
+        description:      String(i.description || ''),
+        size:             String(i.size || ''),
+        unit:             String(i.unit || 'EA'),
+        qty:              i.qty ?? '',
+        unit_price:       i.unit_price ?? '',
+        // Phase 1 enrichment fields — used by detail panel in Step 3
+        sow_section:      i.sow_section      ?? null,
+        spec_text:        i.spec_text        ?? null,
+        source_page:      i.source_page      ?? null,
+        source_file:      i.source_file      ?? null,
+        _source:          i._source          ?? null,
+        qty_total:        i.qty_total        ?? null,
+        manufacturer_ref: i.manufacturer_ref ?? null,
+        part_number:      i.part_number      ?? null,
+        quantities_by_period: i.quantities_by_period ?? null,
+      }))
+    } else if (aiItems.length) {
       window.S.items = aiItems.map((i,idx) => ({
         id:idx+1, description:String(i.description||''), size:String(i.size||''),
         unit:String(i.unit||'EA'), qty:i.qty??'', unit_price:i.unit_price??''
@@ -192,8 +238,11 @@ async function doParse() {
     dragDepth = 0
     overlay().classList.remove('active')
     document.getElementById('dz')?.classList.remove('over')
-    const f = e.dataTransfer.files[0]
-    if (f && validateDroppedFile(f)) { window.S.file = f; window.S.filePath = null; showFile(f) }
+    const dropped = Array.from(e.dataTransfer.files).filter(f => validateDroppedFile(f))
+    if (dropped.length) {
+      window.S.files = dropped; window.S.file = dropped[0]; window.S.filePath = null
+      showFiles(dropped)
+    }
   })
 })()
 
@@ -214,14 +263,15 @@ function step1(c) {
   ${resumeBanner}
   <div class="card">
     <div class="card-title"><span class="dot"></span>Select Solicitation Document</div>
+    <input type="file" id="file-input" multiple accept=".pdf,.docx,.doc,.txt,.xlsx,.xls" style="display:none">
     <div class="dropzone" id="dz" tabindex="0">
-      <div class="dz-title">Drop your solicitation file here</div>
-      <div class="dz-sub">or click to browse</div>
-      <div class="dz-types"><span class="pill">PDF</span><span class="pill">DOCX</span><span class="pill">TXT</span></div>
+      <div class="dz-title">Drop your solicitation files here</div>
+      <div class="dz-sub">or click to browse — select up to 3 files</div>
+      <div class="dz-types"><span class="pill">PDF</span><span class="pill">DOCX</span><span class="pill">TXT</span><span class="pill">XLSX</span></div>
     </div>
     <div id="file-info" class="hidden" style="margin-top:14px">
-      <div class="alert alert-success">
-        <div><strong id="fname"></strong><div style="font-size:11px;margin-top:2px" id="fsize"></div></div>
+      <div class="alert alert-success" style="align-items:flex-start">
+        <div id="file-list" style="flex:1"></div>
         <button class="btn btn-ghost btn-sm ml-auto" id="clear-file-btn">&#x2715;</button>
       </div>
     </div>
@@ -242,6 +292,18 @@ function step1(c) {
     <div class="progress"><div class="progress-fill" id="prog" style="width:0%"></div></div>
   </div>
   <div id="parse-err" class="hidden"></div>`
+
+  // Wire file input change event
+  const fileInput = document.getElementById('file-input')
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      const selected = Array.from(fileInput.files).filter(f => validateDroppedFile(f))
+      if (selected.length) {
+        window.S.files = selected; window.S.file = selected[0]; window.S.filePath = null
+        showFiles(selected)
+      }
+    })
+  }
 
   // Wire dropzone
   const dz = document.getElementById('dz')
@@ -267,9 +329,10 @@ function step1(c) {
   document.getElementById('resume-session-btn')?.addEventListener('click', () => window.resumeSession?.())
   document.getElementById('dismiss-session-btn')?.addEventListener('click', () => window.dismissSession?.())
 
-  // Restore visual state if file already selected
-  if (window.S.file) showFile(window.S.file)
-  else if (window.S.filePath) showFile({ name: window.S.filePath.split(/[/\\]/).pop() })
+  // Restore visual state if file(s) already selected
+  if (window.S.files && window.S.files.length > 0) showFiles(window.S.files)
+  else if (window.S.file) showFiles([window.S.file])
+  else if (window.S.filePath) showFiles([{ name: window.S.filePath.split(/[/\\]/).pop() }])
 }
 
 function init() {

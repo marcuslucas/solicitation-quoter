@@ -208,6 +208,35 @@ a:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
 .tbl .tfoot td{background:var(--color-surface-raised);font-weight:700;color:var(--color-primary)}
 .row-actions{display:flex;gap:var(--space-xs)}
 
+/* ── LINE ITEM EXPAND + DETAIL PANEL ─────────────────────────────────────── */
+.lt-col-expand{width:2rem;min-width:2rem;padding:0!important;text-align:center}
+.lt-col-num{min-width:2.5rem;white-space:nowrap;text-align:center;color:var(--color-text-muted)}
+.lt-input-qty{min-width:4rem;text-align:right;font-size:inherit}
+.lt-input-price{min-width:6.5rem;text-align:right;font-size:inherit}
+.expand-btn{background:none;border:none;cursor:pointer;color:var(--color-text-muted);font-size:0.75rem;padding:0.25rem;transition:transform 0.15s ease;line-height:1;display:inline-flex;align-items:center;justify-content:center}
+.expand-btn.open{transform:rotate(90deg);color:var(--color-primary)}
+.expand-btn:hover{color:var(--color-text)}
+.detail-row td{padding:0!important;border-bottom:1px solid var(--color-border)!important}
+.detail-panel{padding:var(--space-md) var(--space-lg) var(--space-md) 3rem;border-top:1px solid var(--color-border);display:flex;flex-direction:column;gap:var(--space-sm);font-size:var(--text-sm)}
+.dp-meta{display:flex;align-items:center;gap:var(--space-md)}
+.dp-section{color:var(--color-text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.dp-badge{font-size:var(--text-sm);font-weight:700;padding:2px var(--space-sm);border-radius:0;letter-spacing:.4px;text-transform:uppercase;border:1px solid;display:inline-flex;align-items:center}
+.badge-sow-xlsx{background:rgba(0,255,65,.15);color:var(--color-success);border-color:rgba(0,255,65,.3)}
+.badge-sow{background:rgba(0,200,255,.10);color:var(--color-info);border-color:rgba(0,200,255,.25)}
+.badge-xlsx{background:rgba(170,255,0,.08);color:var(--color-warning);border-color:rgba(170,255,0,.2)}
+.badge-unknown{background:transparent;color:var(--color-text-muted);border-color:var(--color-border)}
+.dp-refs{display:flex;gap:2rem;color:var(--color-text);font-size:var(--text-sm)}
+.dp-quantities{display:flex;gap:var(--space-md);flex-wrap:wrap;color:var(--color-text-muted);font-size:var(--text-sm);padding:var(--space-xs) 0;border-top:1px solid var(--color-border);border-bottom:1px solid var(--color-border)}
+.dp-qty-label{font-weight:700;color:var(--color-text)}
+.dp-qty-total{font-weight:700;color:var(--color-primary)}
+.dp-spec{display:flex;flex-direction:column;gap:4px}
+.dp-spec-label{font-weight:700;color:var(--color-text-muted);font-size:var(--text-sm);display:block}
+.dp-spec-text{margin:0;color:var(--color-text);line-height:1.5;max-height:120px;overflow-y:auto;max-width:80ch}
+.dp-actions{margin-top:var(--space-xs);display:flex;justify-content:flex-end}
+.btn-view-source{background:none;border:1px solid var(--color-border);color:var(--color-info);padding:var(--space-xs) var(--space-md);cursor:pointer;font-size:var(--text-sm);font-family:var(--font)}
+.btn-view-source:hover{background:var(--color-surface-raised);border-color:var(--color-text)}
+.dp-empty{color:var(--color-text-muted);margin:0;font-style:italic}
+
 /* Method badge */
 .mbadge{display:inline-flex;align-items:center;gap:var(--space-xs);font-size:var(--text-sm);padding:3px var(--space-sm);border-radius:0;margin-bottom:var(--space-lg);text-transform:uppercase;letter-spacing:.5px}
 .mbadge.ai{background:rgba(0,255,65,.1);color:var(--color-primary);border:1px solid rgba(0,255,65,.3)}

@@ -14,4 +14,7 @@ contextBridge.exposeInMainWorld('api', {
   loadApiKey:  ()    => ipcRenderer.invoke('load-api-key'),
   clearApiKey: ()    => ipcRenderer.invoke('clear-api-key'),
   restartBackend: () => ipcRenderer.invoke('restart-backend'),
+  getSessionFilePath: (filename) => ipcRenderer.invoke('get-session-file-path', filename),
+  openPdfViewer: (filePath, page, searchText) => ipcRenderer.invoke('open-pdf-viewer', filePath, page, searchText),
+  clearSession: (port) => fetch(`http://127.0.0.1:${port}/api/sol-quoter/session/clear`, { method: 'POST' }),
 })

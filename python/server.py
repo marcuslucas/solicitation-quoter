@@ -1,12 +1,27 @@
 #!/usr/bin/env python3
 import os, sys, json, re, tempfile, traceback, io, atexit, glob, time, threading, concurrent.futures
+import shutil, datetime
 from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 
 from constants import MAX_UPLOAD_BYTES, PORT, TMP_PREFIX
-from extractor import parse_document, extract_data, extract, extract_line_items, SCOPE_MAX
+from extractor import parse_document, extract_data, extract, extract_line_items, SCOPE_MAX, parse_solicitation_bundle, classify_document
+from document_loader import load_document
 from generator import generate_quote
 from validator import validate_fields
+
+
+def get_session_dir() -> Path:
+    d = Path.home() / ".sol-quoter" / "session" / "current"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def clear_session_dir():
+    d = Path.home() / ".sol-quoter" / "session" / "current"
+    if d.exists():
+        shutil.rmtree(d)
+    d.mkdir(parents=True, exist_ok=True)
 
 _PORT = int(os.environ.get("PORT", PORT))
 _ALLOWED_ORIGIN = f"http://127.0.0.1:{_PORT}"
@@ -56,17 +71,20 @@ def validate_upload(file):
     if fname.endswith('.pdf'):
         # Accept both real PDFs (%PDF) and SAM.gov ZIP bundles (PK) delivered with .pdf extension
         if header[:4] not in (b'%PDF', b'PK\x03\x04'):
-            return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+            return "Unsupported file type — only PDF, DOCX, TXT, and XLSX are accepted", 400
     elif fname.endswith('.docx') or fname.endswith('.doc'):
         if header[:2] != b'PK':
-            return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+            return "Unsupported file type — only PDF, DOCX, TXT, and XLSX are accepted", 400
+    elif fname.endswith(('.xlsx', '.xls')):
+        if header[:2] != b'PK':
+            return "Unsupported file type — only PDF, DOCX, TXT, and XLSX are accepted", 400
     elif fname.endswith('.txt'):
         try:
             header.decode('utf-8')
         except UnicodeDecodeError:
-            return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+            return "Unsupported file type — only PDF, DOCX, TXT, and XLSX are accepted", 400
     else:
-        return "Unsupported file type — only PDF, DOCX, and TXT are accepted", 400
+        return "Unsupported file type — only PDF, DOCX, TXT, and XLSX are accepted", 400
 
     return None, None
 
@@ -75,7 +93,7 @@ def _startup_sweep():
     """Delete stale app temp files from prior sessions (older than 1 hour)."""
     tmp_dir = tempfile.gettempdir()
     cutoff = time.time() - 3600
-    patterns = ['sqt_*.pdf', 'sqt_*.docx', 'sqt_*.doc', 'sqt_*.txt']
+    patterns = ['sqt_*.pdf', 'sqt_*.docx', 'sqt_*.doc', 'sqt_*.txt', 'sqt_*.xlsx', 'sqt_*.xls']
     removed = 0
     for pattern in patterns:
         for f in glob.glob(os.path.join(tmp_dir, pattern)):
@@ -124,53 +142,70 @@ def cors(r):
 def ping():
     return jsonify({"status": "ok"})
 
+
+@app.route("/api/sol-quoter/session/clear", methods=["POST", "OPTIONS"])
+def session_clear_route():
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    try:
+        clear_session_dir()
+        return jsonify({"status": "cleared"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # ── ROUTES ───────────────────────────────────────────────────────────────────
 
 @app.route("/parse", methods=["POST","OPTIONS"])
 def parse_route():
     if request.method=="OPTIONS": return jsonify({}),200
-    tmp_path = None
     try:
-        if "file" not in request.files:
+        uploaded_files = request.files.getlist("file")
+        if not uploaded_files:
             return jsonify({"error":"No file uploaded"}),400
-        file=request.files["file"]
-        # Validate size and magic bytes BEFORE saving to disk
-        error_msg, status_code = validate_upload(file)
-        if error_msg:
-            return jsonify({"error": error_msg}), status_code
-        suffix=Path(file.filename).suffix
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, prefix=TMP_PREFIX) as tmp:
-            tmp_path=tmp.name
-        file.save(tmp_path)
-        _active_tmp_files.add(tmp_path)
-        def _do_parse(path):
-            t = parse_document(path)
-            return t, extract_data(t)
+
+        # Wipe previous session and save each file to the session directory
+        clear_session_dir()
+        session_dir = get_session_dir()
+
+        saved_files = []
+        bundle = []  # list of {path, filename}
+        for file in uploaded_files:
+            error_msg, status_code = validate_upload(file)
+            if error_msg:
+                return jsonify({"error": error_msg}), status_code
+            dest = session_dir / Path(file.filename).name
+            file.save(str(dest))
+            saved_files.append({"path": str(dest), "filename": file.filename})
+            bundle.append({"path": str(dest), "filename": file.filename})
+
+        def _do_parse(files):
+            return parse_solicitation_bundle(files)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-            fut = ex.submit(_do_parse, tmp_path)
+            fut = ex.submit(_do_parse, bundle)
             try:
-                text, data = fut.result(timeout=30)
+                data = fut.result(timeout=30)
             except concurrent.futures.TimeoutError:
-                # Note: on timeout, the parse worker thread continues until parse_document()
-                # finishes naturally. Temp file cleanup is handled by atexit. (Pitfall 4)
                 return jsonify({
                     "error": "Parsing timed out after 30 seconds. The file may be too large or corrupted."
                 }), 408
-        if not text.strip():
+
+        if not data:
             return jsonify({"error":"Could not extract text from document."}),400
 
-        # Determine source type from file extension
-        source_type = Path(file.filename).suffix.lower().lstrip('.')
+        # Determine source type from the first PDF in the bundle (for validation + bounding boxes)
+        main_file = uploaded_files[0]
+        source_type = Path(main_file.filename).suffix.lower().lstrip('.')
         if source_type in ('doc', 'docx'):
             source_type = 'docx'
 
-        # Extract bounding boxes for PDF sources (D-18)
+        # Extract bounding boxes for the main PDF source (best-effort)
         bounding_boxes = {}
+        main_tmp = bundle[0]["path"]
         if source_type == 'pdf':
             try:
                 import pdfplumber
-                with pdfplumber.open(tmp_path) as pdf:
+                with pdfplumber.open(main_tmp) as pdf:
                     for page_num, page in enumerate(pdf.pages, 1):
                         words = page.extract_words()
                         for field_name, field_value in data.items():
@@ -178,11 +213,9 @@ def parse_route():
                                 continue
                             if field_name in bounding_boxes:
                                 continue
-                            # Find first occurrence of field value (first 40 chars) in page words
                             search_text = field_value[:40].lower()
                             page_text = ' '.join(w['text'] for w in words).lower()
                             if search_text[:20] in page_text:
-                                # Find approximate bounding box from matching words
                                 for w in words:
                                     if w['text'].lower() in search_text:
                                         bounding_boxes[field_name] = {
@@ -194,9 +227,9 @@ def parse_route():
                                         }
                                         break
             except Exception:
-                pass  # bounding boxes are best-effort (D-26)
+                pass  # bounding boxes are best-effort
 
-        # Run confidence validation (D-13, D-15)
+        # Run confidence validation
         confidence = validate_fields(data, source_type)
 
         # Merge bounding boxes into confidence field entries
@@ -205,26 +238,42 @@ def parse_route():
             if bb:
                 field_entry['boundingBox'] = bb
 
+        # Classify files and build session file map
+        _session_files = {"main": None, "sow": None, "pricing": None}
+        try:
+            for f in saved_files:
+                doc = load_document(f["path"])
+                role = classify_document(doc.text, f["filename"])
+                if role == "main":
+                    _session_files["main"] = f["filename"]
+                elif role == "sow":
+                    _session_files["sow"] = f["filename"]
+                elif role == "pricing":
+                    _session_files["pricing"] = f["filename"]
+
+            # Write manifest
+            manifest = {
+                "timestamp": datetime.datetime.utcnow().isoformat(),
+                "solicitation_number": data.get("solicitation_number", ""),
+                "files": _session_files
+            }
+            (session_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+        except Exception as e:
+            print(f"[session] Manifest write failed (non-fatal): {e}", flush=True)
+
         return jsonify({
             "success": True,
             "data": data,
             "overallConfidence": confidence["overallConfidence"],
             "fields": confidence["fields"],
-            "flags": confidence["flags"]
+            "flags": confidence["flags"],
+            "_session_files": _session_files
         })
     except Exception as e:
         from werkzeug.exceptions import RequestEntityTooLarge
         if isinstance(e, RequestEntityTooLarge):
             return jsonify({"error": "File too large — maximum 50 MB"}), 413
         traceback.print_exc(); return jsonify({"error":str(e)}),500
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.unlink(tmp_path)
-            except Exception:
-                pass
-        if tmp_path:
-            _active_tmp_files.discard(tmp_path)
 
 @app.route("/generate_quote", methods=["POST","OPTIONS"])
 def gen_route():

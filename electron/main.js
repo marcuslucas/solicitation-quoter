@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu, MenuItem, safeStorage } = require('electron')
 const path = require('path')
+const os = require('os')
 const { spawn } = require('child_process')
 const http = require('http')
 const fs = require('fs')
@@ -278,6 +279,19 @@ ipcMain.handle('restart-backend', async () => {
   } catch (e) {
     return { ok: false, error: e.message }
   }
+})
+
+ipcMain.handle('get-session-file-path', (event, filename) => {
+  const safeName = path.basename(filename)
+  const sessionDir = path.join(os.homedir(), '.sol-quoter', 'session', 'current')
+  const filePath = path.join(sessionDir, safeName)
+  return fs.existsSync(filePath) ? filePath : null
+})
+
+ipcMain.handle('open-pdf-viewer', (event, filePath, page, searchText) => {
+  // Placeholder — full implementation in Phase 4
+  console.log('[open-pdf-viewer] filePath:', filePath, 'page:', page)
+  return { status: 'viewer_not_yet_implemented' }
 })
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────────────────

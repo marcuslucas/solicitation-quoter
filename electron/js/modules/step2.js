@@ -118,6 +118,7 @@ function step2(c) {
   ${pdfPanelHtml}
   <div class="btn-row">
     <button class="btn btn-ghost" style="margin-right:auto" id="step2-clear-btn">Clear Fields</button>
+    <button class="btn btn-ghost btn-sm" id="btn-clear-reparse">&#x21BA; Clear &amp; Reparse</button>
     <button class="btn btn-ghost" id="step2-back-btn">&#x2190; Back</button>
     <button class="btn btn-primary" id="step2-next-btn">Company Info &amp; Lines &#x2192;</button>
   </div>`
@@ -175,6 +176,11 @@ function step2(c) {
   // Wire action buttons
   document.getElementById('step2-clear-btn')?.addEventListener('click', () => {
     window.clearExtracted?.()
+  })
+  document.getElementById('btn-clear-reparse')?.addEventListener('click', async () => {
+    try { await window.api.clearSession(window.S.port) } catch(e) {}
+    window.S.sessionFiles = {}
+    goTo(1)
   })
   document.getElementById('step2-back-btn')?.addEventListener('click', () => goTo(1))
   document.getElementById('step2-next-btn')?.addEventListener('click', () => next())
