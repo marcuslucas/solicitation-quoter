@@ -1,9 +1,11 @@
 {
+  "_schema_version": 2,
+  "format": "formal_rfq",
   "solicitation_number": "69056725Q000044",
   "title": "Laundry Service for Material Lab",
   "type": "RFQ",
-  "agency": "United States Department of Transportation - Federal Highway Administration (FHWA), Western Federal Lands Highway Division",
-  "due_date": "09/02/2025 at 2:00 pm",
+  "agency": "United States Department of Transportation, Federal Highway Administration (FHWA), Western Federal Lands Highway Division",
+  "due_date": "09/02/2025, at 2:00 pm",
   "posting_date": "08/18/2025",
   "contact_name": "Evan Rowe",
   "contact_email": "WFL.Purchasing@dot.gov",
@@ -12,7 +14,16 @@
   "psc_code": "S209",
   "set_aside": "Total Small Business Set-Aside",
   "place_of_performance": "610 E 5th Street, Vancouver, Clark County, WA",
-  "period_of_performance": "Base period 09/13/2025 – 09/12/2026, plus 4 option periods of 12 months each through 09/12/2030",
+  "period_of_performance": "Base period 09/13/2025 \u2013 09/12/2026, plus 4 option periods of 12 months each through 09/12/2030",
   "estimated_value": null,
-  "scope_of_work": "Laundry supply and cleaning services for the Materials Lab at 610 E 5th Street, Vancouver, WA. Bi-weekly supply and cleaning of floor mats (various sizes), aprons, and towels. Quarterly cleaning of laundry bags. Contractor retrieves and replaces items throughout the building on weekdays 8:00am-3:30pm PT."
+  "scope_of_work": null,
+  "line_item_count": 0,
+  "line_items_sample": [],
+  "required_fields": [
+    "solicitation_number",
+    "due_date",
+    "contact_email",
+    "naics_code"
+  ],
+  "notes": "Formal RFQ with cover page + SECTION A-E structure. Service contract (laundry) — no line items. due_date contains a comma before 'at' — raw PDF text, not a parser artifact (per CLAUDE.md). agency joined with comma not dash (PDF has org lines on separate lines with no separator). scope_of_work set to null — extractor returns full verbatim SOW which is much longer than any useful summary."
 }

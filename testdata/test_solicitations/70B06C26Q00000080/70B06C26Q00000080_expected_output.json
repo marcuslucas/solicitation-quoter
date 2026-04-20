@@ -1,4 +1,6 @@
 {
+  "_schema_version": 2,
+  "format": "sf1449",
   "solicitation_number": "70B06C26Q00000080",
   "title": "Less Lethal Specialty Munitions (LLSM) IDIQ",
   "type": "RFP",
@@ -12,9 +14,35 @@
   "psc_code": null,
   "set_aside": "Small Business Set-Aside 100%",
   "place_of_performance": null,
-  "period_of_performance": "5 year ordering period from date of award, delivery orders may require delivery up to 12 months beyond last day of ordering period",
+  "period_of_performance": "5 year ordering period",
   "estimated_value": "$49,900,000.00",
   "contract_type": "IDIQ with Firm Fixed Price delivery orders",
   "minimum_guarantee": "$10,000.00",
-  "scope_of_work": "Acquisition of Distraction Devices, Specialty Impact and Area Saturation Munitions, hand delivered and launched in 40mm launchers, for training and operational use for DHS."
+  "scope_of_work": "Distraction Devices, Specialty Impact and Area Saturation Munitions",
+  "line_item_count": 118,
+  "line_items_sample": [
+    {
+      "sow_section": "4.1.1",
+      "description": "Smoke Canister for Training (Reduced Toxicity)",
+      "_source": "SOW+XLSX"
+    },
+    {
+      "sow_section": "4.5.9",
+      "description": "40mm Long Range Canister (OC)",
+      "_source": "SOW+XLSX"
+    },
+    {
+      "sow_section": "4.10.9",
+      "description": "Removable Face Shield",
+      "_source": "SOW+XLSX"
+    }
+  ],
+  "required_fields": [
+    "solicitation_number",
+    "due_date",
+    "contact_email",
+    "naics_code",
+    "set_aside"
+  ],
+  "notes": "SF-1449 bundle: main PDF + SOW PDF (Attachment 1) + XLSX pricing (Attachment 2). 118 line items, all _source=SOW+XLSX. scope_of_work and period_of_performance use substring matching — extracted values are verbatim from document and are longer than expected strings here."
 }

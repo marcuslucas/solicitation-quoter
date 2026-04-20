@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Source Document</title>
+  <!-- PDF.js 3.x — vendored at electron/vendor/pdfjs/pdf.js + pdf.worker.js — update both files in sync -->
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    /* ── LAYOUT ────────────────────────────────────────────────────────────── */
+    #layout {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    /* ── TOOLBAR ───────────────────────────────────────────────────────────── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      background: #252525;
+      border-bottom: 1px solid #333;
+      user-select: none;
+      -webkit-user-select: none;
+      flex-shrink: 0;
+      min-height: 40px;
+    }
+
+    #toolbar button {
+      background: #333;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      min-width: 34px;
+      line-height: 1.4;
+    }
+    #toolbar button:hover:not(:disabled) { background: #404040; border-color: #555; }
+    #toolbar button:disabled { opacity: 0.35; cursor: default; }
+
+    #page-indicator {
+      color: #aaa;
+      font-size: 12px;
+      white-space: nowrap;
+      min-width: 96px;
+      text-align: center;
+    }
+
+    #zoom-indicator {
+      color: #aaa;
+      font-size: 12px;
+      min-width: 38px;
+      text-align: center;
+    }
+
+    .toolbar-sep {
+      width: 1px;
+      height: 20px;
+      background: #3a3a3a;
+      flex-shrink: 0;
+    }
+
+    #toolbar-title {
+      margin-left: auto;
+      color: #555;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 220px;
+    }
+
+    /* ── SCROLL AREA ───────────────────────────────────────────────────────── */
+    #scroll-area {
+      flex: 1;
+      overflow: auto;
+      display: flex;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* ── VIEWER CONTAINER ─────────────────────────────────────────────────── */
+    #viewer-container {
+      position: relative;
+      display: inline-block;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
+      align-self: flex-start;
+    }
+
+    #pdf-canvas {
+      display: block;
+    }
+
+    /* ── TEXT LAYER ────────────────────────────────────────────────────────── */
+    #text-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      overflow: hidden;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    #text-layer span,
+    #text-layer br {
+      position: absolute;
+      white-space: pre;
+      transform-origin: 0% 0%;
+      color: transparent;
+    }
+
+    .sol-highlight {
+      background: rgba(255, 220, 0, 0.4) !important;
+      border-radius: 2px;
+      mix-blend-mode: multiply;
+    }
+
+    /* ── STATUS OVERLAY (loading + errors) ────────────────────────────────── */
+    #status-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1a;
+      z-index: 200;
+      flex-direction: column;
+      gap: 16px;
+      padding: 40px;
+      text-align: center;
+    }
+    #status-overlay.visible { display: flex; }
+
+    #status-message {
+      color: #999;
+      font-size: 14px;
+      max-width: 420px;
+      line-height: 1.6;
+    }
+    #status-message.error { color: #e57373; }
+
+    #loading-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #333;
+      border-top-color: #4caf50;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    #loading-spinner.hidden { display: none; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<div id="layout">
+  <div id="toolbar">
+    <button id="prev-btn"     disabled title="Previous page (← arrow key)">&#8592; Prev</button>
+    <span   id="page-indicator">—</span>
+    <button id="next-btn"     disabled title="Next page (→ arrow key)">Next &#8594;</button>
+    <div class="toolbar-sep"></div>
+    <button id="zoom-out-btn" disabled title="Zoom out (- key)">&#8722;</button>
+    <span   id="zoom-indicator">150%</span>
+    <button id="zoom-in-btn"  disabled title="Zoom in (+ key)">&#43;</button>
+    <span   id="toolbar-title"></span>
+  </div>
+
+  <div id="scroll-area">
+    <div id="viewer-container">
+      <canvas id="pdf-canvas"></canvas>
+      <div    id="text-layer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Status overlay: shown during load and on error -->
+<div id="status-overlay" class="visible">
+  <div id="loading-spinner"></div>
+  <div id="status-message">Loading document&hellip;</div>
+</div>
+
+<script src="vendor/pdfjs/pdf.js"></script>
+<script>
+(async function () {
+  'use strict'
+
+  // ── SCALE STEPS ────────────────────────────────────────────────────────────
+  const SCALES = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5]
+
+  // ── STATE ──────────────────────────────────────────────────────────────────
+  let pdfDoc          = null
+  let currentPage     = 1
+  let totalPages      = 0
+  let targetPage      = 1   // page we were opened to — gets highlight
+  let initSearch      = ''
+  let currentScale    = 1.5
+  let renderPending   = false
+
+  // ── DOM REFS ───────────────────────────────────────────────────────────────
+  const canvas        = document.getElementById('pdf-canvas')
+  const textLayerDiv  = document.getElementById('text-layer')
+  const prevBtn       = document.getElementById('prev-btn')
+  const nextBtn       = document.getElementById('next-btn')
+  const zoomInBtn     = document.getElementById('zoom-in-btn')
+  const zoomOutBtn    = document.getElementById('zoom-out-btn')
+  const pageIndicator = document.getElementById('page-indicator')
+  const zoomIndicator = document.getElementById('zoom-indicator')
+  const statusOverlay = document.getElementById('status-overlay')
+  const statusMsg     = document.getElementById('status-message')
+  const spinner       = document.getElementById('loading-spinner')
+  const titleEl       = document.getElementById('toolbar-title')
+
+  // ── STATUS HELPERS ─────────────────────────────────────────────────────────
+  function showLoading(msg) {
+    statusMsg.textContent = msg || 'Loading document\u2026'
+    statusMsg.className = ''
+    spinner.classList.remove('hidden')
+    statusOverlay.classList.add('visible')
+  }
+
+  function showError(msg) {
+    statusMsg.textContent = msg
+    statusMsg.className = 'error'
+    spinner.classList.add('hidden')
+    statusOverlay.classList.add('visible')
+  }
+
+  function hideOverlay() {
+    statusOverlay.classList.remove('visible')
+  }
+
+  // ── UI STATE ───────────────────────────────────────────────────────────────
+  function updateUI() {
+    pageIndicator.textContent = totalPages
+      ? 'Page ' + currentPage + ' of ' + totalPages
+      : '\u2014'
+    prevBtn.disabled    = currentPage <= 1
+    nextBtn.disabled    = currentPage >= totalPages
+    zoomOutBtn.disabled = currentScale <= SCALES[0]
+    zoomInBtn.disabled  = currentScale >= SCALES[SCALES.length - 1]
+    zoomIndicator.textContent = Math.round(currentScale * 100) + '%'
+  }
+
+  function enableToolbar() {
+    prevBtn.disabled    = currentPage <= 1
+    nextBtn.disabled    = currentPage >= totalPages
+    zoomOutBtn.disabled = currentScale <= SCALES[0]
+    zoomInBtn.disabled  = false
+  }
+
+  // ── HIGHLIGHT ──────────────────────────────────────────────────────────────
+  function applyHighlight(searchText) {
+    if (!searchText || !searchText.trim()) return
+    const query  = searchText.trim().toLowerCase().slice(0, 40)
+    if (!query) return
+    const needle = query.slice(0, 20)
+    const spans  = textLayerDiv.querySelectorAll('span')
+    let first    = null
+    spans.forEach(span => {
+      if (span.textContent.toLowerCase().includes(needle)) {
+        span.classList.add('sol-highlight')
+        if (!first) first = span
+      }
+    })
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  // ── RENDER PAGE ────────────────────────────────────────────────────────────
+  async function renderPage(pageNum, highlightText) {
+    if (!pdfDoc) return
+    // Clamp
+    pageNum = Math.max(1, Math.min(pageNum, totalPages))
+    currentPage = pageNum
+
+    if (renderPending) return
+    renderPending = true
+
+    try {
+      const page     = await pdfDoc.getPage(pageNum)
+      const viewport = page.getViewport({ scale: currentScale })
+
+      // Resize canvas to match viewport
+      canvas.width  = viewport.width
+      canvas.height = viewport.height
+
+      // Render PDF to canvas
+      const ctx = canvas.getContext('2d')
+      await page.render({ canvasContext: ctx, viewport }).promise
+
+      // Clear and resize text layer
+      textLayerDiv.innerHTML    = ''
+      textLayerDiv.style.width  = viewport.width  + 'px'
+      textLayerDiv.style.height = viewport.height + 'px'
+
+      // Render text layer (needed for highlight; non-fatal if it fails)
+      try {
+        const textContent = await page.getTextContent()
+        const renderTask  = pdfjsLib.renderTextLayer({
+          textContentSource: textContent,
+          container:         textLayerDiv,
+          viewport,
+          textDivs:          []
+        })
+        // Handle both TaskObject.promise and direct-Promise return forms
+        if (renderTask) {
+          await (renderTask.promise != null ? renderTask.promise : renderTask)
+        }
+        if (highlightText) {
+          // Small delay so spans fully settle in the DOM before querying
+          setTimeout(() => applyHighlight(highlightText), 100)
+        }
+      } catch (textErr) {
+        console.warn('[pdfviewer] text layer render failed (non-fatal):', textErr)
+      }
+
+      updateUI()
+    } catch (err) {
+      console.error('[pdfviewer] renderPage error:', err)
+    } finally {
+      renderPending = false
+    }
+  }
+
+  // ── NAVIGATION ─────────────────────────────────────────────────────────────
+  async function goToPage(pageNum) {
+    // Only apply highlight when on the target page we were opened to
+    const highlight = (pageNum === targetPage) ? initSearch : ''
+    await renderPage(pageNum, highlight)
+  }
+
+  // ── ZOOM ───────────────────────────────────────────────────────────────────
+  async function adjustZoom(delta) {
+    let idx = SCALES.findIndex(s => s >= currentScale - 0.001)
+    if (idx < 0) idx = SCALES.length - 1
+    const newIdx  = Math.max(0, Math.min(SCALES.length - 1, idx + delta))
+    const newScale = SCALES[newIdx]
+    if (newScale === currentScale) return
+    currentScale = newScale
+    await goToPage(currentPage)
+  }
+
+  // ── TOOLBAR EVENTS ─────────────────────────────────────────────────────────
+  prevBtn.addEventListener('click',    () => { if (currentPage > 1)          goToPage(currentPage - 1) })
+  nextBtn.addEventListener('click',    () => { if (currentPage < totalPages) goToPage(currentPage + 1) })
+  zoomInBtn.addEventListener('click',  () => adjustZoom(+1))
+  zoomOutBtn.addEventListener('click', () => adjustZoom(-1))
+
+  // ── KEYBOARD SHORTCUTS ─────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+    switch (e.key) {
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        e.preventDefault()
+        if (currentPage > 1) goToPage(currentPage - 1)
+        break
+      case 'ArrowRight':
+      case 'ArrowDown':
+        e.preventDefault()
+        if (currentPage < totalPages) goToPage(currentPage + 1)
+        break
+      case '+':
+      case '=':
+        e.preventDefault()
+        adjustZoom(+1)
+        break
+      case '-':
+        e.preventDefault()
+        adjustZoom(-1)
+        break
+      case 'Escape':
+        window.close()
+        break
+    }
+  })
+
+  // ── INIT ───────────────────────────────────────────────────────────────────
+
+  // Set PDF.js worker path — resolved relative to this file's location
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'vendor/pdfjs/pdf.worker.js',
+    document.baseURI
+  ).href
+
+  // Parse parameters from URL hash
+  let filePath, page, searchText
+  try {
+    const raw = decodeURIComponent(window.location.hash.slice(1))
+    ;({ filePath, page, searchText } = JSON.parse(raw))
+  } catch (e) {
+    showError('Invalid viewer parameters. Close this window and try again from Step 3.')
+    return
+  }
+
+  if (!filePath) {
+    showError('No file path provided. Close this window and try again from Step 3.')
+    return
+  }
+
+  // Show filename in toolbar and title bar
+  const basename = filePath.replace(/\\/g, '/').split('/').pop() || filePath
+  titleEl.textContent = basename
+  document.title = basename
+
+  initSearch = (searchText || '').trim()
+  targetPage = parseInt(page) || 1
+
+  showLoading('Loading document\u2026')
+
+  // Read file via IPC (restricted to session directory)
+  let arrayBuffer
+  try {
+    arrayBuffer = await window.api.readFileAsArrayBuffer(filePath)
+  } catch (e) {
+    console.error('[pdfviewer] readFileAsArrayBuffer error:', e)
+    showError('Source file not available. Re-parse the solicitation to restore session files.')
+    return
+  }
+
+  // Load PDF document
+  try {
+    pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  } catch (e) {
+    console.error('[pdfviewer] getDocument error:', e)
+    showError('Could not load PDF. The file may be corrupt or in an unsupported format.')
+    return
+  }
+
+  totalPages = pdfDoc.numPages
+  targetPage = Math.max(1, Math.min(targetPage, totalPages))
+
+  hideOverlay()
+  enableToolbar()
+  updateUI()
+
+  await goToPage(targetPage)
+})()
+</script>
+</body>
+</html>

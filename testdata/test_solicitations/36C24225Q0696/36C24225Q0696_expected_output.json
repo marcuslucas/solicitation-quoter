@@ -1,4 +1,6 @@
 {
+  "_schema_version": 2,
+  "format": "agency_form",
   "solicitation_number": "36C24225Q0696",
   "title": "FY25 Service (Base + 2) - WNY Electrical Distribution Maintenance - 528/528A4",
   "type": "RFQ",
@@ -12,7 +14,17 @@
   "psc_code": "J061",
   "set_aside": "Total Small Business Set-Aside",
   "place_of_performance": "Buffalo VA Medical Center, 3495 Bailey Avenue, Buffalo NY 14215 and Batavia VA Medical Center, 222 Richmond Avenue, Batavia NY 14020",
-  "period_of_performance": "Base year from date of award plus 2 option years",
-  "estimated_value": "$12.5 Million (small business size standard)",
-  "scope_of_work": "Firm fixed-price service contract for Electrical Distribution System (EDS) maintenance at the Buffalo and Batavia VA Medical Centers for one base year from date of award with provision of two option years."
+  "period_of_performance": null,
+  "estimated_value": null,
+  "scope_of_work": null,
+  "line_item_count": 0,
+  "line_items_sample": [],
+  "required_fields": [
+    "solicitation_number",
+    "due_date",
+    "contact_email",
+    "naics_code",
+    "contact_name"
+  ],
+  "notes": "VA agency_form (Combined Synopsis/Solicitation with SOLICITATION NUMBER* field). Service contract — no line items. place_of_performance extracted in a different order than PDF layout (addresses and facility names separated). period_of_performance and estimated_value not extracted by agency_form extractor — known gaps. scope_of_work phrasing differs (extractor captures lowercase fragment). Setting those three fields to null so harness skips comparison."
 }

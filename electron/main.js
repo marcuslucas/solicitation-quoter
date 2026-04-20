@@ -289,9 +289,38 @@ ipcMain.handle('get-session-file-path', (event, filename) => {
 })
 
 ipcMain.handle('open-pdf-viewer', (event, filePath, page, searchText) => {
-  // Placeholder — full implementation in Phase 4
-  console.log('[open-pdf-viewer] filePath:', filePath, 'page:', page)
-  return { status: 'viewer_not_yet_implemented' }
+  const viewerWin = new BrowserWindow({
+    width: 920,
+    height: 1100,
+    minWidth: 600,
+    minHeight: 700,
+    title: 'Source Document Viewer',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  })
+  const params = encodeURIComponent(JSON.stringify({
+    filePath,
+    page: page || 1,
+    searchText: searchText || ''
+  }))
+  viewerWin.loadFile(path.join(__dirname, 'pdfviewer.html'), { hash: params })
+  return { status: 'opening' }
+})
+
+ipcMain.handle('read-file-as-array-buffer', (event, filePath) => {
+  const sessionDir = path.resolve(path.join(os.homedir(), '.sol-quoter', 'session', 'current'))
+  const resolved = path.resolve(filePath)
+  if (!resolved.startsWith(sessionDir + path.sep) && resolved !== sessionDir) {
+    throw new Error('Access denied: file outside session directory')
+  }
+  if (!fs.existsSync(resolved)) {
+    throw new Error('File not found: ' + resolved)
+  }
+  const buffer = fs.readFileSync(resolved)
+  return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength)
 })
 
 // ── APP LIFECYCLE ─────────────────────────────────────────────────────────────

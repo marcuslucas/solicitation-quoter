@@ -391,10 +391,19 @@ function wireLineItemDelegation() {
       }
       return
     }
-    // View source PDF (Phase 3 placeholder — Phase 4 wires real handler)
     const viewBtn = e.target.closest('.btn-view-source')
     if (viewBtn) {
-      console.log('View source:', viewBtn.dataset.file, viewBtn.dataset.page, viewBtn.dataset.search)
+      const filename = viewBtn.dataset.file
+      const page     = parseInt(viewBtn.dataset.page) || 1
+      const search   = viewBtn.dataset.search || ''
+      ;(async () => {
+        const filePath = await window.api.getSessionFilePath(filename)
+        if (!filePath) {
+          window.toast('Source file not available. Re-parse the solicitation to restore.', 'error')
+          return
+        }
+        await window.api.openPdfViewer(filePath, page, search)
+      })()
       return
     }
     // Dup / Del
