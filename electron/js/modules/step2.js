@@ -22,23 +22,65 @@ function step2(c) {
         ? '<span class="mbadge ai">SAM.gov Lookup</span>'
         : '<span class="mbadge rules">Rule-Based Extraction</span>'
 
-  // Confidence badge per D-19, D-23
+  // Confidence badge — field-level validator confidence (existing, used for flagged-field inline badges)
   const conf = window.S.confidence || {}
-  const oc = conf.overallConfidence
-  let confBadgeHtml = ''
-  if (oc !== null && oc !== undefined) {
-    let badgeClass, badgeLabel
-    if (oc >= 95) {
-      badgeClass = 'mbadge ai'
-      badgeLabel = `${oc}% Confidence`
-    } else if (oc >= 70) {
-      badgeClass = 'mbadge rules'
-      badgeLabel = `${oc}% Confidence &mdash; review flagged fields`
-    } else {
-      badgeClass = 'mbadge'
-      badgeLabel = `${oc}% Confidence &mdash; low accuracy, review all fields`
+
+  // Phase 7: parse-quality confidence banner
+  const pc = window.S.parseConfidence
+  let confBannerHtml = ''
+
+  if (pc && typeof pc.overall === 'number') {
+    const pct = (pc.overall * 100).toFixed(0)
+    const warns = pc.warnings || []
+
+    const warningTextMap = {
+      'missing_field':  w => `Field not found: ${w.field}`,
+      'unknown_format': _  => 'Document format not recognized',
+      'no_line_items':  _  => 'No line items extracted — single placeholder row used',
     }
-    confBadgeHtml = `<div class="confidence-badge"><span class="${badgeClass}"${oc < 70 ? ' style="background:var(--color-error);color:var(--color-contrast-dark)"' : ''}>${badgeLabel}</span></div>`
+
+    const warningListHtml = warns.length
+      ? `<ul class="confidence-warnings">
+           ${warns.map(w => {
+             const fn = warningTextMap[w.code]
+             return fn ? `<li>${fn(w)}</li>` : ''
+           }).join('')}
+         </ul>`
+      : ''
+
+    const reasons = pc.reasons || []
+    const reasonsListHtml = reasons.length
+      ? `<ul class="confidence-warnings">
+           ${reasons.map(r => `<li>${esc(r)}</li>`).join('')}
+         </ul>`
+      : ''
+
+    if (pc.overall >= 0.8) {
+      confBannerHtml = `
+        <div class="confidence-bar confidence-bar--green">
+          <span class="confidence-label">Extraction confidence: high</span>
+          <span class="confidence-score">${pct}%</span>
+        </div>`
+    } else if (pc.overall >= 0.5) {
+      confBannerHtml = `
+        <div class="confidence-bar confidence-bar--amber">
+          <span class="confidence-label">Extraction confidence: moderate — review fields below</span>
+          <span class="confidence-score">${pct}%</span>
+          ${warningListHtml}
+          ${reasonsListHtml}
+        </div>`
+    } else {
+      confBannerHtml = `
+        <div class="confidence-bar confidence-bar--red">
+          <span class="confidence-label">Extraction confidence: low — review all fields carefully</span>
+          <span class="confidence-score">${pct}%</span>
+          ${warningListHtml}
+          ${reasonsListHtml}
+          <div class="confidence-hint">
+            AI-assisted extraction will be available in a future update.
+          </div>
+        </div>`
+    }
   }
 
   const fields = [
@@ -103,7 +145,7 @@ function step2(c) {
 
   c.innerHTML = `
   ${badge}
-  ${confBadgeHtml}
+  ${confBannerHtml}
   <div class="card">
     <div class="card-title"><span class="dot"></span>Extracted Fields <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">&mdash; click any field to edit</span></div>
     <div class="data-grid">${items}</div>

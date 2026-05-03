@@ -199,6 +199,9 @@ async function doParse() {
     if (!data.success) throw new Error(data.error || "Extraction failed");
     p(100, "Done!");
     window.S.extracted = data.data;
+    window.S.parseConfidence = (data.data && data.data.confidence)
+      ? data.data.confidence
+      : null
     window.S.sessionFiles = data._session_files || {};
     // Store confidence data for step 2 rendering (Phase 8)
     window.S.confidence = {

@@ -1197,6 +1197,108 @@ def _extract_clin_items(text: str) -> list:
     return items
 
 
+# ── CONFIDENCE SCORING ───────────────────────────────────────────────────────
+
+# Confidence weight constants — adjustable without touching logic
+_CONF_WEIGHT_FORMAT = 0.3
+_CONF_WEIGHT_FIELDS = 0.4
+_CONF_WEIGHT_ITEMS  = 0.3
+
+
+def compute_confidence(result: dict) -> dict:
+    """
+    Compute a structured parse-quality confidence score.
+    Called at end of parse_solicitation_bundle() before return.
+    Do not call from extract_data() — line item counts are not
+    available there.
+    """
+
+    # --- format_detection score ---
+    # Determined from _format and extraction_warnings — no changes
+    # to detect_format() return type required.
+    known_formats = {"sf1449", "sam_export", "agency_form", "formal_rfq"}
+    fmt = result.get("_format", "unknown")
+    warnings = result.get("extraction_warnings", [])
+    has_unknown_warning = any(w.get("code") == "unknown_format" for w in warnings)
+    reasons = []
+
+    if fmt in known_formats:
+        format_score = 1.0
+        reasons.append(f"Format recognized as {fmt}")
+    elif has_unknown_warning:
+        format_score = 0.0
+        reasons.append("Format not recognized — extraction may be unreliable")
+    else:
+        format_score = 0.5
+        reasons.append("Format uncertain — using fallback extraction")
+
+    # --- required_fields score ---
+    required = ["solicitation_number", "due_date", "contact_email", "naics_code"]
+    field_labels = {
+        "solicitation_number": "solicitation number",
+        "due_date":            "due date",
+        "contact_email":       "contact email",
+        "naics_code":          "NAICS code",
+    }
+    filled = sum(
+        1 for f in required
+        if result.get(f) and str(result.get(f)).strip()
+    )
+    fields_score = filled / len(required)
+    missing_labels = [
+        field_labels[f] for f in required
+        if not (result.get(f) and str(result.get(f)).strip())
+    ]
+    if not missing_labels:
+        reasons.append("All required fields found")
+    else:
+        reasons.append(f"Missing required fields: {', '.join(missing_labels)}")
+
+    # --- line_items score ---
+    items = result.get("line_items", [])
+    if not items:
+        items_score = 0.0
+        reasons.append("No line items found")
+    elif any(i.get("_source") == "SOW+XLSX" for i in items):
+        items_score = 1.0
+        reasons.append(f"Line items: SOW spec and pricing quantities merged ({len(items)} items)")
+    elif any(i.get("_source") in ("SOW", "XLSX") for i in items):
+        items_score = 0.7
+        reasons.append(f"Line items: SOW spec only — no pricing spreadsheet ({len(items)} items)")
+    elif any(i.get("_source") == "CLIN" for i in items):
+        items_score = 0.4
+        reasons.append(f"Line items: CLIN fallback — {len(items)} items extracted from body text")
+    elif (
+        len(items) == 1 and
+        items[0].get("description") in (
+            result.get("solicitation_number", ""),
+            result.get("project_title", "")
+        )
+    ):
+        items_score = 0.1
+        reasons.append("Line items: single placeholder row from project title")
+    else:
+        items_score = 0.5
+        reasons.append(f"Line items: {len(items)} items from unverified source")
+
+    # --- overall (weighted average) ---
+    overall = round(
+        _CONF_WEIGHT_FORMAT * format_score +
+        _CONF_WEIGHT_FIELDS * fields_score +
+        _CONF_WEIGHT_ITEMS  * items_score,
+        2
+    )
+
+    return {
+        "overall":          overall,
+        "format_detection": format_score,
+        "required_fields":  fields_score,
+        "line_items":       items_score,
+        "warnings":         warnings,
+        "reasons":          reasons,
+    }
+
+
 def parse_solicitation_bundle(files):
     """
     Parse a bundle of uploaded files and merge results.
@@ -1282,4 +1384,5 @@ def parse_solicitation_bundle(files):
     if warnings:
         print(f"[parse_solicitation_bundle] warnings={warnings}")
 
+    data["confidence"] = compute_confidence(data)
     return data
