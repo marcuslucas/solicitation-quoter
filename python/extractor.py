@@ -89,6 +89,13 @@ def detect_format(text):
         scores["sam_export"] += 1
     if "Notice Details" in first_5000:
         scores["sam_export"] += 1
+    # Defensive fingerprints for SAM export variants that use different notice ID labeling
+    if "Contracting Office Information" in first_5000:
+        scores["sam_export"] += 1
+    if re.search(r"Response Date:\s*\d{4}/\d{2}/\d{2}", first_5000):
+        scores["sam_export"] += 1
+    if "Set Aside Code" in text:
+        scores["sam_export"] += 1
 
     # ── agency_form ───────────────────────────────────────────────────────────
     if re.search(r"SOLICITATION NUMBER\*", first_2000):
@@ -164,6 +171,18 @@ def extract_sam_export(text):
         r"RFP\s*(?:No|Number|#)[:\s]*([A-Z0-9\-]+)",
         r"RFQ\s*(?:No|Number|#)[:\s]*([A-Z0-9\-]+)",
     ])
+    # SAM.gov amendment notices store the base notice ID in "Notice ID:" and the
+    # amendment number separately as "Update: NNNN" in the page header.
+    # Combine them to reconstruct the full solicitation number (e.g. W911S225U14310001).
+    _update_m = re.search(
+        r"^[A-Z0-9\-]+:\s+Combined\s+Synopsis/Solicitation\b.*?\bUpdate:\s*(\d+)\b",
+        text, re.MULTILINE | re.DOTALL | re.IGNORECASE
+    )
+    if _update_m and d.get("solicitation_number"):
+        suffix = _update_m.group(1)
+        if not d["solicitation_number"].endswith(suffix):
+            d["solicitation_number"] = d["solicitation_number"] + suffix
+
     d["project_title"] = find([
         r"Subject[:\s]+(.+?)(?:\n|$)",
         r"(?:Project|Contract|Solicitation)\s+Title[:\s]+(.+?)(?:\n|$)",
@@ -190,8 +209,8 @@ def extract_sam_export(text):
         r"([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})",
     ])
     d["contact_phone"] = find([r"Primary\s+Contact\s+Phone\s*(?:Number)?[:\s]*([^\n]+)"])
-    d["naics_code"] = find([r"NAICS\s*(\d{5,6}(?:[:\s]+[^\n]+)?)"])
-    d["psc_code"]   = find([r"Product\s+or\s+Service\s+Code\s*([0-9A-Z]+[^\n]*)"])
+    d["naics_code"] = find([r"NAICS\s*(\d{5,6})"])
+    d["psc_code"]   = find([r"Product\s+or\s+Service\s+Code\s*([0-9A-Z]+)"])
     d["set_aside"]  = find([
         r"Set\s*Aside\s*Code\s*(.+?)(?:\n|$)",
         r"(Total Small Business Set.?Aside|Small Business|8\(a\)|SDVOSB|HUBZone|WOSB)",
@@ -459,10 +478,12 @@ def extract_sf1449(text):
         d["contact_email"] = find([r"([\w.%+\-]+@[\w.\-]+\.(?:gov|mil|us|com))\b"])
 
     # Block 8 — Offer Due Date / Local Time
-    # Layout: same line as contact: "... <email> MM/DD/YYYY H:MMxM TZ"
+    # Layout A (70B): "... <email> MM/DD/YYYY H:MMxM TZ" on same line as contact
+    # Layout B (18Q0042): "OFFER DUE DATE/LOCAL TIME\nINFO CALL: ... HH:MM AM DD Mon YYYY"
     d["due_date"] = find([
         r"(\d{2}/\d{2}/\d{4}\s+\d{1,2}:\d{2}[AP]M\s+\w+)",
         r"OFFER\s+DUE\s+DATE[^\n]*\n.*?(\d{2}/\d{2}/\d{4})",
+        r"OFFER\s+DUE\s+DATE[^\n]*\n[^\n]*?(\d{1,2}:\d{2}\s+[AP]M\s+\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4})",
     ])
 
     # Block 9 — Issued By (issuing agency)
@@ -1246,5 +1267,19 @@ def parse_solicitation_bundle(files):
         if clin_items:
             data["line_items"] = clin_items
             print(f"[parse_solicitation_bundle] CLIN fallback: {len(clin_items)} items")
+
+    # ── assemble extraction_warnings ──────────────────────────────────────────────
+    warnings = []
+    for _field in ["solicitation_number", "due_date", "contact_email", "naics_code"]:
+        _val = data.get(_field)
+        if not _val or str(_val).strip() == "":
+            warnings.append({"code": "missing_field", "field": _field})
+    if data.get("_format") == "unknown":
+        warnings.append({"code": "unknown_format"})
+    if not data.get("line_items"):
+        warnings.append({"code": "no_line_items", "source": "fallback_single_row"})
+    data["extraction_warnings"] = warnings
+    if warnings:
+        print(f"[parse_solicitation_bundle] warnings={warnings}")
 
     return data

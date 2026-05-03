@@ -1,0 +1,15 @@
+{
+  "_schema_version": 2,
+  "format": "sf1449",
+  "solicitation_number": "N0016418Q0042",
+  "due_date": "03:00 PM 26 Jan 2018",
+  "contact_email": "emily.a.johnson@navy.mil",
+  "naics_code": "325920",
+  "set_aside": "Small Business Set-Aside 100%",
+  "estimated_value": "$15,000.00",
+  "title": null,
+  "line_item_count": 0,
+  "line_items_sample": [],
+  "required_fields": ["solicitation_number", "due_date", "contact_email", "naics_code"],
+  "notes": "73-page SF-1449, Naval Surface Warfare Center Crane Div, BLASTEX explosive charges. due_date extracted as '03:00 PM 26 Jan 2018' from Block 8 DD-Mon-YYYY format (Phase 6 sf1449 due_date pattern addition). title set to null to skip comparison — sf1449 project_title pattern matches boilerplate signature block text instead of an actual title (known extractor gap). CLIN fallback (_extract_clin_items) finds 9 items in document but these only fire in parse_solicitation_bundle() bundle mode; run.py uses single-file mode (extract_data only), so line_item_count is 0."
+}

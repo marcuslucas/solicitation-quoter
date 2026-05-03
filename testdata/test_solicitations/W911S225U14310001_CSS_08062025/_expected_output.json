@@ -1,0 +1,15 @@
+{
+  "_schema_version": 2,
+  "format": "sam_export",
+  "solicitation_number": "W911S225U14310001",
+  "title": "Law Enforcement ballistic vests",
+  "due_date": "2025/08/13 08:00 -08:00 Pacific Standard Time",
+  "contact_email": "cory.a.ponder.civ@army.mil",
+  "naics_code": "339113",
+  "psc_code": "8470",
+  "set_aside": "Total Small Business Set-Aside",
+  "line_item_count": 0,
+  "line_items_sample": [],
+  "required_fields": ["solicitation_number", "due_date", "contact_email", "naics_code"],
+  "notes": "SAM.gov Combined Synopsis/Solicitation with amendment. Notice ID 'W911S225U1431' + Update '0001' combined to 'W911S225U14310001' by Phase 6 fix. No line items — SOW attachment (W911S225U1431_S2P2.pdf) not included in fixture. Vest sizes captured in quantities[] not line_items. naics_code and psc_code are numeric codes only after Phase 6 descriptor-strip fix. due_date includes timezone offset string, raw SAM.gov format. place_of_performance captures label+address block but not in ideal format — known issue, not in required_fields."
+}

@@ -1,0 +1,15 @@
+{
+  "_schema_version": 2,
+  "format": "sam_export",
+  "solicitation_number": "N5005426Q0114",
+  "title": "Central Fresh Water System Parts",
+  "due_date": "2026/04/07 15:00 -05:00 Eastern Standard Time",
+  "contact_email": "erica.collins1@navy.mil",
+  "naics_code": "332996",
+  "psc_code": "4730",
+  "set_aside": "Total Small Business Set-Aside",
+  "line_item_count": 0,
+  "line_items_sample": [],
+  "required_fields": ["solicitation_number", "due_date", "contact_email", "naics_code"],
+  "notes": "SAM.gov Combined Synopsis/Solicitation, no amendment. solicitation_number matches Notice ID exactly. No line items — SOW is Attachment_I_Statement_of_Work.pdf not included in fixture. naics_code and psc_code are numeric codes only after Phase 6 descriptor-strip fix. place_of_performance captures label token only ('Place of Performance Zip Code') — no address present in PDF, known issue. contact_phone is 7 digits ('4000779') — abbreviated extension, accurately reflects PDF."
+}
