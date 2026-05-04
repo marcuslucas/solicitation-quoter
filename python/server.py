@@ -10,6 +10,19 @@ from document_loader import load_document
 from generator import generate_quote
 from validator import validate_fields
 
+# ── AI EXTRACTION CONFIG ──────────────────────────────────────────────────────
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed — env vars must be set externally
+
+_AI_API_KEY         = os.environ.get('ANTHROPIC_API_KEY', '').strip()
+_AI_MAX_CALLS       = int(os.environ.get('AI_MAX_CALLS', '10'))
+_AI_HEADER_MODEL    = os.environ.get('AI_HEADER_MODEL', 'claude-haiku-4-5-20251001')
+_AI_LINE_ITEM_MODEL = os.environ.get('AI_LINE_ITEM_MODEL', 'claude-sonnet-4-6')
+_ai_call_count      = 0   # resets on process restart — intentional, session scope
+
 
 def get_session_dir() -> Path:
     d = Path.home() / ".sol-quoter" / "session" / "current"
@@ -134,7 +147,7 @@ def cors(r):
         r.headers["Access-Control-Allow-Origin"] = origin if origin else _ALLOWED_ORIGIN
     else:
         r.headers["Access-Control-Allow-Origin"] = _ALLOWED_ORIGIN
-    r.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    r.headers["Access-Control-Allow-Headers"] = "Content-Type, X-Api-Key"
     r.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return r
 
@@ -152,6 +165,220 @@ def session_clear_route():
         return jsonify({"status": "cleared"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/sol-quoter/ai-status", methods=["GET", "OPTIONS"])
+def ai_status_route():
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+    # Check env key OR key passed in X-Api-Key request header
+    req_key = request.headers.get('X-Api-Key', '').strip()
+    effective_key = req_key or _AI_API_KEY
+    available = bool(effective_key)
+    calls_remaining = max(0, _AI_MAX_CALLS - _ai_call_count)
+    return jsonify({"available": available, "calls_remaining": calls_remaining})
+
+
+# ── AI PROMPT CONSTANTS ───────────────────────────────────────────────────────
+_HEADER_SYSTEM_PROMPT = """You are extracting structured data from a government solicitation document.
+Return ONLY a JSON object. No markdown, no explanation, no preamble.
+
+Extract these fields. If a field cannot be found, use null (not empty string):
+  solicitation_number, project_title, due_date, contact_name, contact_email,
+  contact_phone, naics_code, psc_code, set_aside, place_of_performance,
+  period_of_performance, issuing_agency, solicitation_type, estimated_value
+
+Rules:
+- Dates: return exactly as they appear in the document (do not reformat)
+- solicitation_number: the official contract/solicitation identifier
+- naics_code: 5 or 6 digit number only (e.g. "336992") — no description text
+- set_aside: full set-aside type name (e.g. "Total Small Business Set-Aside")
+- If a field appears multiple times, prefer the most specific or prominent one"""
+
+_LINE_ITEM_SYSTEM_PROMPT = """You are extracting line items from a government solicitation document.
+Return ONLY a JSON array of objects. No markdown, no explanation, no preamble.
+
+Each object must have exactly these fields:
+  description (string) — the item or service description
+  unit        (string) — unit of measure e.g. "EA", "LOT", "HR", "YR", "CS"
+  qty         (number or null) — quantity if stated; null if not stated
+  unit_price  (number or null) — unit price if stated; null if not stated
+
+Rules:
+- Include every distinct deliverable, supply item, or service line
+- If a CLIN number is visible, include it at the start of description
+- Do not include subtotals, totals, or header rows
+- If quantities are stated per period, use the Base period quantity for qty
+
+Example output:
+[
+  {"description": "CLIN 0001 - Protective Mask", "unit": "EA",
+   "qty": null, "unit_price": null},
+  {"description": "Replacement Filter Kit (6-pack)", "unit": "CS",
+   "qty": 200, "unit_price": null}
+]"""
+
+
+def _chunk_text(text: str, chunk_size: int = 6000,
+                overlap: int = 500) -> list:
+    """Split text into overlapping chunks for multi-pass AI extraction."""
+    if len(text) <= chunk_size:
+        return [text]
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        chunks.append(text[start:end])
+        if end >= len(text):
+            break
+        start = end - overlap
+    return chunks
+
+
+@app.route("/api/sol-quoter/extract-ai", methods=["POST", "OPTIONS"])
+def extract_ai_route():
+    global _ai_call_count
+    if request.method == "OPTIONS":
+        return jsonify({}), 200
+
+    # --- Auth: check env key OR per-request key in header ---
+    req_key = request.headers.get('X-Api-Key', '').strip()
+    effective_key = req_key or _AI_API_KEY
+    if not effective_key:
+        return jsonify({
+            "error": "AI extraction is not available — configure "
+                     "ANTHROPIC_API_KEY in .env or in the app settings",
+            "code": "no_api_key"
+        }), 503
+
+    # --- Call limit check BEFORE making any API call ---
+    if _ai_call_count >= _AI_MAX_CALLS:
+        return jsonify({
+            "error": f"AI extraction call limit reached "
+                     f"({_AI_MAX_CALLS} calls this session). "
+                     "Restart the app to reset.",
+            "code": "call_limit_reached",
+            "calls_used": _ai_call_count,
+            "limit": _AI_MAX_CALLS
+        }), 429
+
+    body   = request.get_json() or {}
+    target = body.get("target", "")
+    if target not in ("headers", "line_items"):
+        return jsonify({"error": "target must be 'headers' or 'line_items'",
+                        "code": "invalid_target"}), 400
+
+    # --- Read session manifest ---
+    session_dir   = get_session_dir()
+    manifest_path = session_dir / "manifest.json"
+    if not manifest_path.exists():
+        return jsonify({"error": "No active session — upload a document first",
+                        "code": "no_session"}), 400
+    manifest = json.loads(manifest_path.read_text())
+    files    = manifest.get("files", {})
+
+    # --- Build text input ---
+    main_filename = files.get("main")
+    if not main_filename:
+        return jsonify({"error": "No main document in session",
+                        "code": "no_main_doc"}), 400
+    main_path = session_dir / main_filename
+    main_text = parse_document(str(main_path))
+
+    if target == "headers":
+        chunks        = [main_text[:4000]]
+        system_prompt = _HEADER_SYSTEM_PROMPT
+        model         = _AI_HEADER_MODEL
+        max_tokens    = 1024
+    else:
+        sow_filename = files.get("sow")
+        sow_text = (parse_document(str(session_dir / sow_filename))
+                    if sow_filename else main_text)
+        chunks        = _chunk_text(sow_text)
+        system_prompt = _LINE_ITEM_SYSTEM_PROMPT
+        model         = _AI_LINE_ITEM_MODEL
+        max_tokens    = 2048
+
+    # --- Call Anthropic API ---
+    # Multi-chunk line item extraction counts as ONE call against the limit.
+    # Increment once after all chunks complete — not inside the chunk loop.
+    try:
+        import anthropic as _anthropic
+        client = _anthropic.Anthropic(api_key=effective_key, timeout=30.0)
+
+        total_tokens = 0
+
+        if target == "headers":
+            response = client.messages.create(
+                model=model,
+                max_tokens=max_tokens,
+                system=system_prompt,
+                messages=[{"role": "user", "content": chunks[0]}]
+            )
+            total_tokens = (response.usage.input_tokens +
+                            response.usage.output_tokens)
+            raw = response.content[0].text.strip()
+            raw = re.sub(r'^```(?:json)?\s*\n?', '', raw)
+            raw = re.sub(r'\n?```\s*$', '', raw)
+            result = json.loads(raw)
+            if not isinstance(result, dict):
+                raise ValueError(
+                    f"Expected dict, got {type(result).__name__}")
+
+        else:
+            # Line items — one call per chunk, merge results
+            all_items = []
+            seen      = set()
+            for chunk in chunks:
+                resp = client.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": chunk}]
+                )
+                total_tokens += (resp.usage.input_tokens +
+                                 resp.usage.output_tokens)
+                raw = resp.content[0].text.strip()
+                raw = re.sub(r'^```(?:json)?\s*\n?', '', raw)
+                raw = re.sub(r'\n?```\s*$', '', raw)
+                chunk_result = json.loads(raw)
+                if not isinstance(chunk_result, list):
+                    continue
+                for item in chunk_result:
+                    key = item.get("description", "").strip().lower()
+                    if key and key not in seen:
+                        seen.add(key)
+                        all_items.append(item)
+            result = all_items
+
+    except _anthropic.APITimeoutError:
+        return jsonify({
+            "error": "AI extraction timed out after 30 seconds.",
+            "code": "timeout"
+        }), 408
+    except json.JSONDecodeError as e:
+        return jsonify({
+            "error": "AI returned a response that could not be parsed as JSON.",
+            "code": "invalid_json",
+            "detail": str(e)
+        }), 422
+    except Exception as e:
+        return jsonify({
+            "error": f"Anthropic API error: {str(e)}",
+            "code": "api_error"
+        }), 500
+
+    # Increment ONCE after all chunks complete successfully.
+    # Failed calls (caught above) do not consume quota.
+    _ai_call_count += 1
+
+    return jsonify({
+        "result":      result,
+        "tokens_used": total_tokens,
+        "model":       model,
+        "target":      target
+    })
+
 
 # ── ROUTES ───────────────────────────────────────────────────────────────────
 

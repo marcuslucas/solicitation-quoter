@@ -315,6 +315,11 @@ input.invalid,textarea.invalid,select.invalid{border-color:var(--color-error)!im
 #pdf-pages-container{position:relative}
 #pdf-pages-container canvas{width:100%;display:block;margin-bottom:8px}
 
+/* AI Panel — Phase 8 */
+.ai-panel .ai-panel-header:hover .card-title { color: var(--color-primary); }
+.diff-before { color: var(--color-text-muted); text-decoration: line-through; }
+.diff-after  { color: var(--color-success); }
+
 /* Phase 7: Confidence bar — three-state parse quality indicator */
 .confidence-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:6px;margin-bottom:16px;font-size:13px;flex-wrap:wrap}
 .confidence-bar--green{background:color-mix(in srgb,var(--color-success) 12%,transparent);border:1px solid color-mix(in srgb,var(--color-success) 30%,transparent)}

@@ -9,6 +9,301 @@ const SCOPE_MAX_DISPLAY = '3,000'
 // Wiring kept intact so flagged-field click handlers don't throw.
 window.scrollPdfToBoundingBox = function() {}
 
+// ── AI PANEL ──────────────────────────────────────────────────────────────────
+
+const FIELD_LABELS = {
+  solicitation_number:   'Solicitation #',
+  project_title:         'Project Title',
+  solicitation_type:     'Type',
+  issuing_agency:        'Issuing Agency',
+  due_date:              'Response Due Date',
+  posting_date:          'Posting Date',
+  contact_name:          'Contact Name',
+  contact_email:         'Contact Email',
+  contact_phone:         'Contact Phone',
+  naics_code:            'NAICS Code',
+  psc_code:              'PSC Code',
+  set_aside:             'Set-Aside',
+  place_of_performance:  'Place of Performance',
+  period_of_performance: 'Period of Performance',
+  estimated_value:       'Est. Value',
+}
+
+function updateAiUsageDisplay() {
+  const el = document.getElementById('ai-usage-display')
+  if (!el || !window.S.aiUsage.calls) return
+  const { calls, tokens } = window.S.aiUsage
+  el.textContent =
+    `${calls} call${calls !== 1 ? 's' : ''} · ` +
+    `${tokens.toLocaleString()} token${tokens !== 1 ? 's' : ''}`
+}
+
+function mergeAiResult(current, aiResult) {
+  // current = window.S.extracted, aiResult = /extract-ai response result
+  const merged  = { ...current }
+  const changes = []
+  for (const [key, value] of Object.entries(aiResult)) {
+    if (value === null || value === undefined) continue
+    const currentStr = (current[key] === null || current[key] === undefined)
+      ? '' : String(current[key]).trim()
+    const newStr = String(value).trim()
+    if (newStr !== '' && newStr !== currentStr) {
+      changes.push({ field: key, before: current[key], after: value })
+      merged[key] = value
+    }
+  }
+  return { merged, changes }
+}
+
+function showAiDiff(aiResult) {
+  const { changes } = mergeAiResult(window.S.extracted, aiResult)
+  window.S._pendingAiChanges = changes
+
+  const diffEl = document.getElementById('ai-diff')
+  if (!diffEl) return
+  diffEl.classList.remove('hidden')
+
+  if (!changes.length) {
+    diffEl.innerHTML =
+      '<p style="font-size:12px;color:var(--color-text-muted);margin:0">' +
+      'AI found no improvements to the current extraction.</p>'
+    return
+  }
+
+  const rows = changes.map((ch, i) => {
+    const label  = FIELD_LABELS[ch.field] || ch.field
+    const before = ch.before == null ? '<em>empty</em>' :
+      `<span class="diff-before">${esc(String(ch.before))}</span>`
+    const after  = `<span class="diff-after">${esc(String(ch.after))}</span>`
+    return `<tr>
+      <td style="padding:4px 8px">
+        <input type="checkbox" checked data-change-idx="${i}" />
+      </td>
+      <td style="padding:4px 8px;font-size:12px">${label}</td>
+      <td style="padding:4px 8px;font-size:12px">${before}</td>
+      <td style="padding:4px 8px;font-size:12px">${after}</td>
+    </tr>`
+  }).join('')
+
+  diffEl.innerHTML = `
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr>
+          <th style="padding:4px 8px;text-align:left;font-size:11px;
+              color:var(--color-text-muted);border-bottom:1px solid
+              var(--color-border)">Apply</th>
+          <th style="padding:4px 8px;text-align:left;font-size:11px;
+              color:var(--color-text-muted);border-bottom:1px solid
+              var(--color-border)">Field</th>
+          <th style="padding:4px 8px;text-align:left;font-size:11px;
+              color:var(--color-text-muted);border-bottom:1px solid
+              var(--color-border)">Current</th>
+          <th style="padding:4px 8px;text-align:left;font-size:11px;
+              color:var(--color-text-muted);border-bottom:1px solid
+              var(--color-border)">AI Suggestion</th>
+        </tr>
+      </thead>
+      <tbody id="ai-diff-tbody">${rows}</tbody>
+    </table>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-primary btn-sm" id="ai-accept-btn">
+        Accept Selected
+      </button>
+      <button class="btn btn-ghost btn-sm" id="ai-discard-btn">
+        Discard All
+      </button>
+    </div>`
+
+  // Wire accept / discard
+  document.getElementById('ai-accept-btn').addEventListener('click', () => {
+    const checked = diffEl.querySelectorAll(
+      '#ai-diff-tbody input[type="checkbox"]:checked')
+    checked.forEach(cb => {
+      const idx    = parseInt(cb.dataset.changeIdx)
+      const change = (window.S._pendingAiChanges || [])[idx]
+      if (!change) return
+      // Write to state
+      window.S.extracted[change.field] = change.after
+      // Update DOM input directly — avoids re-render flash
+      const input = document.querySelector(
+        `input[data-field="${change.field}"]`)
+      if (input) input.value = String(change.after)
+    })
+    diffEl.classList.add('hidden')
+    diffEl.innerHTML = ''
+    window.S._pendingAiChanges = null
+    // Re-enable buttons
+    const hBtn = document.getElementById('ai-extract-headers-btn')
+    const iBtn = document.getElementById('ai-extract-items-btn')
+    if (hBtn) { hBtn.disabled = false; hBtn.textContent = 'Extract Headers with AI' }
+    if (iBtn) { iBtn.disabled = false; iBtn.textContent = 'Extract Line Items with AI' }
+    updateAiUsageDisplay()
+  })
+
+  document.getElementById('ai-discard-btn').addEventListener('click', () => {
+    diffEl.classList.add('hidden')
+    diffEl.innerHTML = ''
+    window.S._pendingAiChanges = null
+    const hBtn = document.getElementById('ai-extract-headers-btn')
+    const iBtn = document.getElementById('ai-extract-items-btn')
+    if (hBtn) { hBtn.disabled = false; hBtn.textContent = 'Extract Headers with AI' }
+    if (iBtn) { iBtn.disabled = false; iBtn.textContent = 'Extract Line Items with AI' }
+  })
+}
+
+async function doAiExtract(target) {
+  const hBtn = document.getElementById('ai-extract-headers-btn')
+  const iBtn = document.getElementById('ai-extract-items-btn')
+  const btn  = target === 'headers' ? hBtn : iBtn
+  if (!btn) return
+  if (hBtn) hBtn.disabled = true
+  if (iBtn) iBtn.disabled = true
+  btn.textContent = 'Extracting…'
+
+  // Clear any previous error
+  const errEl = document.getElementById('ai-error-msg')
+  if (errEl) errEl.classList.add('hidden')
+
+  try {
+    const headers = { 'Content-Type': 'application/json' }
+    if (window.S.apiKey) headers['X-Api-Key'] = window.S.apiKey
+    const resp = await fetch(
+      `http://127.0.0.1:${window.S.port}/api/sol-quoter/extract-ai`,
+      { method: 'POST', headers, body: JSON.stringify({ target }) }
+    )
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}))
+      const msg = err.error || 'AI extraction failed'
+      if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden') }
+      return
+    }
+    const data = await resp.json()
+    window.S.aiUsage.calls  += 1
+    window.S.aiUsage.tokens += (data.tokens_used || 0)
+    showAiDiff(data.result)
+  } catch (e) {
+    if (errEl) {
+      errEl.textContent = 'AI extraction failed: ' + e.message
+      errEl.classList.remove('hidden')
+    }
+  } finally {
+    if (hBtn && target !== 'headers') hBtn.disabled = false
+    if (iBtn && target !== 'line_items') iBtn.disabled = false
+    if (btn) btn.textContent = target === 'headers'
+      ? 'Extract Headers with AI' : 'Extract Line Items with AI'
+    updateAiUsageDisplay()
+  }
+}
+
+function renderAiPanel() {
+  const container = document.getElementById('ai-panel-container')
+  if (!container) return
+  if (!window.S.aiAvailable) { container.innerHTML = ''; return }
+
+  const remaining  = window.S.aiCallsRemaining ?? 10
+  const autoExpand = window.S.parseConfidence &&
+                     window.S.parseConfidence.overall < 0.6
+  const bodyHidden = autoExpand ? '' : ' hidden'
+
+  container.innerHTML = `
+    <div class="card ai-panel" id="ai-panel" style="margin-bottom:12px">
+      <div class="ai-panel-header" id="ai-panel-toggle"
+        style="display:flex;align-items:center;justify-content:space-between;
+               cursor:pointer;user-select:none">
+        <div class="card-title" style="margin:0">
+          <span class="dot"></span>AI-Assisted Extraction
+        </div>
+        <span style="font-size:12px;color:var(--color-text-muted)">
+          ${remaining} call${remaining !== 1 ? 's' : ''} remaining
+        </span>
+      </div>
+      <div id="ai-panel-body"${bodyHidden ? ' class="hidden"' : ''}
+        style="padding:12px;display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;gap:8px;
+                      font-size:13px;cursor:pointer">
+          <input type="checkbox" id="ai-toggle-cb"
+            style="width:auto;margin:0" />
+          <span>Enable AI extraction for this session</span>
+        </label>
+        <div id="ai-disclosure" class="hidden"
+          style="font-size:12px;color:var(--color-text-muted);
+                 line-height:1.5;padding:8px 10px;
+                 background:var(--color-surface);border-radius:4px">
+          Your document text will be sent to Anthropic's API to improve
+          extraction accuracy. For header fields, only the first 4,000
+          characters are sent. For line items, the Statement of Work text
+          is sent in segments. No data is stored by Anthropic after
+          processing.
+        </div>
+        <div id="ai-buttons" class="hidden"
+          style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" id="ai-extract-headers-btn">
+            Extract Headers with AI
+          </button>
+          <button class="btn btn-ghost btn-sm" id="ai-extract-items-btn">
+            Extract Line Items with AI
+          </button>
+          <span id="ai-usage-display"
+            style="font-size:11px;color:var(--color-text-muted);
+                   margin-left:auto"></span>
+        </div>
+        <div id="ai-error-msg" class="hidden alert alert-error"
+          style="font-size:12px;margin-bottom:0"></div>
+        <div id="ai-diff" class="hidden"></div>
+      </div>
+    </div>`
+
+  updateAiUsageDisplay()
+
+  // Wire collapse toggle
+  document.getElementById('ai-panel-toggle')
+    ?.addEventListener('click', () => {
+      const body = document.getElementById('ai-panel-body')
+      if (body) body.classList.toggle('hidden')
+    })
+
+  // Wire enable toggle
+  document.getElementById('ai-toggle-cb')
+    ?.addEventListener('change', e => {
+      const disc = document.getElementById('ai-disclosure')
+      const btns = document.getElementById('ai-buttons')
+      const err  = document.getElementById('ai-error-msg')
+      if (e.target.checked) {
+        disc?.classList.remove('hidden')
+        btns?.classList.remove('hidden')
+      } else {
+        disc?.classList.add('hidden')
+        btns?.classList.add('hidden')
+        err?.classList.add('hidden')
+      }
+    })
+
+  // Wire extraction buttons
+  document.getElementById('ai-extract-headers-btn')
+    ?.addEventListener('click', () => doAiExtract('headers'))
+  document.getElementById('ai-extract-items-btn')
+    ?.addEventListener('click', () => doAiExtract('line_items'))
+}
+
+async function checkAiStatus() {
+  try {
+    const headers = {}
+    if (window.S.apiKey) headers['X-Api-Key'] = window.S.apiKey
+    const r = await fetch(
+      `http://127.0.0.1:${window.S.port}/api/sol-quoter/ai-status`,
+      { headers }
+    )
+    if (!r.ok) throw new Error('status check failed')
+    const data = await r.json()
+    window.S.aiAvailable      = data.available
+    window.S.aiCallsRemaining = data.calls_remaining
+  } catch {
+    window.S.aiAvailable      = false
+    window.S.aiCallsRemaining = 0
+  }
+  renderAiPanel()
+}
+
 // ── STEP 2 RENDER ─────────────────────────────────────────────────────────────
 
 function step2(c) {
@@ -146,6 +441,7 @@ function step2(c) {
   c.innerHTML = `
   ${badge}
   ${confBannerHtml}
+  <div id="ai-panel-container"></div>
   <div class="card">
     <div class="card-title"><span class="dot"></span>Extracted Fields <span class="text-muted" style="font-weight:400;font-size:12px;margin-left:6px">&mdash; click any field to edit</span></div>
     <div class="data-grid">${items}</div>
@@ -265,6 +561,9 @@ function step2(c) {
       }
     })
   })
+
+  // Phase 8: check AI availability and render panel asynchronously
+  checkAiStatus()
 }
 
 function init() {

@@ -18,6 +18,7 @@ const S = {
     option_years_enabled: false,
     option_years: []
   },
+  aiUsage: { calls: 0, tokens: 0 },
   items: []
 }
 
