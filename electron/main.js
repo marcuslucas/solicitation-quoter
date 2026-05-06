@@ -8,6 +8,7 @@ const fs = require('fs')
 const PORT = parseInt(process.env.PORT || '5199', 10)
 let win = null
 let backend = null
+let viewerWin = null  // PDF viewer window — single-instance enforced
 
 // ── WINDOW BOUNDS ─────────────────────────────────────────────────────────────
 const boundsPath = path.join(app.getPath('userData'), 'window-bounds.json')
@@ -288,8 +289,20 @@ ipcMain.handle('get-session-file-path', (event, filename) => {
   return fs.existsSync(filePath) ? filePath : null
 })
 
-ipcMain.handle('open-pdf-viewer', (event, filePath, page, searchText) => {
-  const viewerWin = new BrowserWindow({
+ipcMain.handle('open-pdf-viewer', (event, filePath, page, searchText, bbox) => {
+  bbox = bbox || null
+
+  if (viewerWin && !viewerWin.isDestroyed()) {
+    // Viewer already open — send navigation message, do not open new window
+    viewerWin.webContents.send('navigate-to-bbox', {
+      filePath, page: page || 1, searchText: searchText || '', bbox
+    })
+    viewerWin.focus()
+    return { status: 'navigated' }
+  }
+
+  // Viewer not open — create it
+  viewerWin = new BrowserWindow({
     width: 920,
     height: 1100,
     minWidth: 600,
@@ -301,10 +314,13 @@ ipcMain.handle('open-pdf-viewer', (event, filePath, page, searchText) => {
       contextIsolation: true
     }
   })
+  viewerWin.on('closed', () => { viewerWin = null })
+
   const params = encodeURIComponent(JSON.stringify({
     filePath,
     page: page || 1,
-    searchText: searchText || ''
+    searchText: searchText || '',
+    bbox: bbox || null
   }))
   viewerWin.loadFile(path.join(__dirname, 'pdfviewer.html'), { hash: params })
   return { status: 'opening' }

@@ -5,9 +5,27 @@
 // ── CONSTANTS ─────────────────────────────────────────────────────────────────
 const SCOPE_MAX_DISPLAY = '3,000'
 
-// scrollPdfToBoundingBox — no-op stub. Inline viewer removed in Phase 10 (UI Fix 2).
-// Wiring kept intact so flagged-field click handlers don't throw.
-window.scrollPdfToBoundingBox = function() {}
+window.scrollPdfToBoundingBox = async function(bbox) {
+  // bbox is the parsed boundingBox object from data-bbox:
+  // { page: 1, x0: 72.0, y0: 400.0, x1: 540.0, y1: 420.0 }
+  if (!bbox) return
+
+  const filename = window.S.file && window.S.file.name
+  if (!filename) return
+
+  const filePath = await window.api.getSessionFilePath(filename)
+  if (!filePath) {
+    if (typeof window.toast === 'function') {
+      window.toast(
+        'Source file not in session. Re-parse the solicitation to restore it.',
+        'error'
+      )
+    }
+    return
+  }
+
+  await window.api.openPdfViewer(filePath, bbox.page || 1, '', bbox)
+}
 
 // ── AI PANEL ──────────────────────────────────────────────────────────────────
 

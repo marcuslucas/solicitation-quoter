@@ -16,7 +16,10 @@ const S = {
     logo_b64:'', logo_ext:'', logo_name:'',
     delivery_days:'',
     option_years_enabled: false,
-    option_years: []
+    option_years: [],
+    line_item_schema: 'standard',
+    include_signature: true,
+    include_notes: true
   },
   aiUsage: { calls: 0, tokens: 0 },
   items: []

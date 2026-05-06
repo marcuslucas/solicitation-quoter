@@ -212,6 +212,8 @@
   let initSearch      = ''
   let currentScale    = 1.5
   let renderPending   = false
+  let currentViewport = null  // set in renderPage(); used by renderBboxOverlay()
+  let initBbox        = null  // bbox from hash params or navigate-to-bbox IPC
 
   // ── DOM REFS ───────────────────────────────────────────────────────────────
   const canvas        = document.getElementById('pdf-canvas')
@@ -295,6 +297,7 @@
     try {
       const page     = await pdfDoc.getPage(pageNum)
       const viewport = page.getViewport({ scale: currentScale })
+      currentViewport = viewport
 
       // Resize canvas to match viewport
       canvas.width  = viewport.width
@@ -391,6 +394,44 @@
     }
   })
 
+  // ── BBOX OVERLAY ───────────────────────────────────────────────────────────
+  function renderBboxOverlay(bbox) {
+    // Remove any existing overlay
+    const existing = document.getElementById('sol-bbox-overlay')
+    if (existing) existing.remove()
+
+    if (!bbox || !currentViewport) return
+
+    // Coordinate conversion:
+    // PDF space: origin bottom-left, y increases upward
+    // Canvas space: origin top-left, y increases downward
+    // currentViewport is already scaled (viewport at currentScale)
+    const left   = bbox.x0 * currentScale
+    const top    = currentViewport.height - bbox.y1 * currentScale
+    const width  = (bbox.x1 - bbox.x0) * currentScale
+    const height = (bbox.y1 - bbox.y0) * currentScale
+
+    const overlay = document.createElement('div')
+    overlay.id = 'sol-bbox-overlay'
+    overlay.style.cssText = [
+      'position:absolute',
+      `left:${left}px`,
+      `top:${top}px`,
+      `width:${width}px`,
+      `height:${height}px`,
+      'background:rgba(59,130,246,0.15)',
+      'border:2px dashed rgba(59,130,246,0.8)',
+      'border-radius:2px',
+      'pointer-events:none',
+      'box-sizing:border-box',
+    ].join(';')
+
+    const container = document.getElementById('viewer-container')
+    if (!container) return
+    container.appendChild(overlay)
+    overlay.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   // ── INIT ───────────────────────────────────────────────────────────────────
 
   // Set PDF.js worker path — resolved relative to this file's location
@@ -403,7 +444,8 @@
   let filePath, page, searchText
   try {
     const raw = decodeURIComponent(window.location.hash.slice(1))
-    ;({ filePath, page, searchText } = JSON.parse(raw))
+    ;({ filePath, page, searchText, bbox: initBbox } = JSON.parse(raw))
+    initBbox = initBbox || null
   } catch (e) {
     showError('Invalid viewer parameters. Close this window and try again from Step 3.')
     return
@@ -451,6 +493,20 @@
   updateUI()
 
   await goToPage(targetPage)
+
+  // Draw bbox overlay for the initial bbox (if any)
+  if (initBbox) renderBboxOverlay(initBbox)
+
+  // Wire IPC listener for subsequent navigate-to-bbox messages from main.js
+  if (window.api && typeof window.api.onNavigateToBbox === 'function') {
+    window.api.onNavigateToBbox(async ({ page: newPage, bbox: newBbox }) => {
+      const pg = (newBbox && newBbox.page)
+        ? newBbox.page
+        : (newPage || currentPage)
+      await goToPage(pg)
+      renderBboxOverlay(newBbox || null)
+    })
+  }
 })()
 </script>
 </body>

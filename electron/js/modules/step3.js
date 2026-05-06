@@ -499,6 +499,77 @@ function validateStep3() {
   return valid
 }
 
+// ── COLUMN RESIZE — Phase 10 ─────────────────────────────────────────────────
+
+const COL_RESIZE_KEY = 'sol-quoter:col-widths'
+const COL_MIN_WIDTH  = 48
+
+const RESIZABLE_COLS = [
+  { key: 'description', defaultWidth: 220 },
+  { key: 'size',        defaultWidth: 85  },
+  { key: 'uom',         defaultWidth: 60  },
+  { key: 'qty',         defaultWidth: 75  },
+  { key: 'unitprice',   defaultWidth: 110 },
+  { key: 'total',       defaultWidth: 110 },
+]
+
+function saveColWidths() {
+  try {
+    const widths = {}
+    document.querySelectorAll('th[data-col]').forEach(th => {
+      widths[th.dataset.col] = th.offsetWidth
+    })
+    localStorage.setItem(COL_RESIZE_KEY, JSON.stringify(widths))
+  } catch (e) {}
+}
+
+function loadColWidths() {
+  try {
+    const raw = localStorage.getItem(COL_RESIZE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch (e) { return null }
+}
+
+function initResizableColumns() {
+  const saved = loadColWidths()
+  if (saved) {
+    RESIZABLE_COLS.forEach(({ key, defaultWidth }) => {
+      const th = document.querySelector(`th[data-col="${key}"]`)
+      if (th) th.style.width = (saved[key] || defaultWidth) + 'px'
+    })
+  }
+
+  document.querySelectorAll('th[data-col]').forEach(th => {
+    th.querySelector('.col-resize-handle')?.remove()
+
+    const handle = document.createElement('div')
+    handle.className = 'col-resize-handle'
+    th.appendChild(handle)
+
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault()
+      const startX     = e.clientX
+      const startWidth = th.offsetWidth
+      document.body.style.userSelect = 'none'
+
+      const onMove = e => {
+        const newWidth = Math.max(COL_MIN_WIDTH, startWidth + (e.clientX - startX))
+        th.style.width = newWidth + 'px'
+      }
+
+      const onUp = () => {
+        saveColWidths()
+        document.body.style.userSelect = ''
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup', onUp)
+      }
+
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
+    })
+  })
+}
+
 // ── STEP 3 RENDER ─────────────────────────────────────────────────────────────
 
 function step3(c) {
@@ -589,6 +660,13 @@ function step3(c) {
         <div class="field"><label>Quote Number</label><input data-vendor-field="quote_number" value="${window.esc(v.quote_number || '')}" placeholder="Q-2026-0001" /></div>
         <div class="field"><label>Quote Valid For</label><input data-vendor-field="validity_period" value="${window.esc(v.validity_period || '')}" placeholder="30 days" /></div>
         <div class="field"><label>Delivery (days ARO)</label><input type="number" data-vendor-field="delivery_days" value="${window.esc(String(v.delivery_days || ''))}" placeholder="30" min="0" /></div>
+        <div class="field s2"><label>Line Item Format</label>
+          <select data-vendor-field="line_item_schema">
+            <option value="standard" ${(v.line_item_schema || 'standard') === 'standard' ? 'selected' : ''}>Standard (Description, Size/Type, UOM, Qty, Price)</option>
+            <option value="apparel" ${v.line_item_schema === 'apparel' ? 'selected' : ''}>Apparel (Description, Color, Size, UOM, Qty, Price)</option>
+            <option value="services" ${v.line_item_schema === 'services' ? 'selected' : ''}>Services (Description, Period, UOM, Qty, Price)</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -603,10 +681,14 @@ function step3(c) {
         <table class="tbl">
           <thead><tr>
             <th class="lt-col-expand"></th>
-            <th class="lt-col-num" style="width:36px">#</th><th>Description</th><th style="width:85px">Size/Type</th>
-            <th style="width:60px">UOM</th><th style="width:75px">Qty</th>
-            <th style="width:110px">Unit Price</th>
-            <th style="width:110px;text-align:right">Total</th><th style="width:72px"></th>
+            <th class="lt-col-num" style="width:36px">#</th>
+            <th data-col="description">Description</th>
+            <th data-col="size" style="width:85px">Size/Type</th>
+            <th data-col="uom" style="width:60px">UOM</th>
+            <th data-col="qty" style="width:75px">Qty</th>
+            <th data-col="unitprice" style="width:110px">Unit Price</th>
+            <th data-col="total" style="width:110px;text-align:right">Total</th>
+            <th style="width:72px"></th>
           </tr></thead>
           <tbody id="li-tbody">${rows}</tbody>
           <tfoot>
@@ -651,6 +733,24 @@ function step3(c) {
       ${optionYearsHtml}
     </div>
 
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Output Settings</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--color-text);font-weight:400;text-transform:none">
+          <input type="checkbox" id="inc-sig"
+            ${v.include_signature !== false ? 'checked' : ''}
+            style="width:auto;margin:0" />
+          Include signature block in quote
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:var(--color-text);font-weight:400;text-transform:none">
+          <input type="checkbox" id="inc-notes"
+            ${v.include_notes !== false ? 'checked' : ''}
+            style="width:auto;margin:0" />
+          Include notes &amp; terms section in quote
+        </label>
+      </div>
+    </div>
+
   </div>
   <div class="btn-row">
     <button class="btn btn-ghost" style="margin-right:auto" id="clear-vendor-btn">Clear Fields</button>
@@ -688,6 +788,14 @@ function step3(c) {
     window.render(3)
   })
 
+  // Wire output settings checkboxes
+  document.getElementById('inc-sig')?.addEventListener('change', e => {
+    window.S.vendor.include_signature = e.target.checked
+  })
+  document.getElementById('inc-notes')?.addEventListener('change', e => {
+    window.S.vendor.include_notes = e.target.checked
+  })
+
   // Wire line items event delegation
   wireLineItemDelegation()
 
@@ -719,6 +827,7 @@ function step3(c) {
 
   // Initial totals display
   updTotals()
+  initResizableColumns()
 }
 
 // ── MODULE INIT ───────────────────────────────────────────────────────────────

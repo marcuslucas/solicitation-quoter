@@ -77,6 +77,9 @@ def generate_quote(solicitation, vendor, line_items):
         tblPr.append(tblBorders)
 
     today = datetime.date.today().strftime("%B %d, %Y")
+    schema        = vendor.get("line_item_schema", "standard")
+    inc_signature = vendor.get("include_signature", True)
+    inc_notes     = vendor.get("include_notes", True)
 
 # Header table
     ht = doc.add_table(rows=1, cols=2); ht.style="Table Grid"; ht.autofit=False
@@ -174,9 +177,16 @@ def generate_quote(solicitation, vendor, line_items):
 
     # Line items
     heading("QUOTE DETAILS")
-    cw=[Inches(0.35),Inches(2.1),Inches(0.55),Inches(0.6),Inches(0.55),Inches(0.85),Inches(1.0)]
-    hdrs=["#","Description / Item","Size/Type","UOM","Qty","Unit Price","Total"]
-    lt=doc.add_table(rows=1+len(line_items)+1,cols=7); lt.style="Table Grid"; lt.autofit=False
+    if schema == "apparel":
+        cw   = [Inches(0.50),Inches(1.50),Inches(0.65),Inches(0.65),Inches(0.50),Inches(0.50),Inches(0.85),Inches(0.85)]
+        hdrs = ["#","Description / Item","Color","Size","UOM","Qty","Unit Price","Total"]
+    elif schema == "services":
+        cw   = [Inches(0.50),Inches(1.95),Inches(0.75),Inches(0.60),Inches(0.55),Inches(0.85),Inches(0.80)]
+        hdrs = ["#","Description / Item","Period","UOM","Qty","Unit Price","Total"]
+    else:
+        cw   = [Inches(0.50),Inches(1.95),Inches(0.55),Inches(0.60),Inches(0.55),Inches(0.85),Inches(1.00)]
+        hdrs = ["#","Description / Item","Size/Type","UOM","Qty","Unit Price","Total"]
+    lt=doc.add_table(rows=1+len(line_items)+1,cols=len(hdrs)); lt.style="Table Grid"; lt.autofit=False
     lt.alignment = WD_TABLE_ALIGNMENT.CENTER
     for ci,w in enumerate(cw): lt.columns[ci].width=w
     hr=lt.rows[0]
@@ -186,9 +196,18 @@ def generate_quote(solicitation, vendor, line_items):
         p=c.paragraphs[0]; p.alignment=WD_ALIGN_PARAGRAPH.CENTER
         run(p,h,bold=True,size=9,color=WHITE)
     grand=0.0; has_any_price=False
-    AL=[WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.LEFT,WD_ALIGN_PARAGRAPH.CENTER,
-        WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.RIGHT,
-        WD_ALIGN_PARAGRAPH.RIGHT]
+    if schema == "apparel":
+        AL=[WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.LEFT,WD_ALIGN_PARAGRAPH.CENTER,
+            WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.CENTER,
+            WD_ALIGN_PARAGRAPH.RIGHT,WD_ALIGN_PARAGRAPH.RIGHT]
+    elif schema == "services":
+        AL=[WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.LEFT,WD_ALIGN_PARAGRAPH.CENTER,
+            WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.RIGHT,
+            WD_ALIGN_PARAGRAPH.RIGHT]
+    else:
+        AL=[WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.LEFT,WD_ALIGN_PARAGRAPH.LEFT,
+            WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.CENTER,WD_ALIGN_PARAGRAPH.RIGHT,
+            WD_ALIGN_PARAGRAPH.RIGHT]
     for i,item in enumerate(line_items):
         row=lt.rows[i+1]; row_keep(row)
         qty_n = fmt_num(item.get("qty"))
@@ -202,14 +221,22 @@ def generate_quote(solicitation, vendor, line_items):
         desc    = item.get("description","") or "N/A"
         size    = item.get("size","") or "N/A"
         unit    = item.get("unit","EA") or "EA"
-        vals=[str(i+1), desc, size, unit, qty_s, up_s, total_s]
+        if schema == "apparel":
+            color_val = item.get("color","") or "N/A"
+            size_val  = item.get("size","")  or "N/A"
+            vals=[str(i+1), desc, color_val, size_val, unit, qty_s, up_s, total_s]
+        elif schema == "services":
+            period_val = item.get("size","") or ""
+            vals=[str(i+1), desc, period_val, unit, qty_s, up_s, total_s]
+        else:
+            vals=[str(i+1), desc, size, unit, qty_s, up_s, total_s]
         for ci,(val,al,w) in enumerate(zip(vals,AL,cw)):
             c=row.cells[ci]; bg(c,bcolor); c.width=w
             p=c.paragraphs[0]; p.alignment=al; p.paragraph_format.left_indent=Pt(3)
             run(p,val,size=9,color=DGRAY)
     tr=lt.rows[-1]; row_keep(tr)
-    for ci in range(7): bg(tr.cells[ci],"F0F0F0"); tr.cells[ci].width=cw[ci]
-    tr.cells[0].merge(tr.cells[4])
+    for ci in range(len(cw)): bg(tr.cells[ci],"F0F0F0"); tr.cells[ci].width=cw[ci]
+    tr.cells[0].merge(tr.cells[len(cw)-3])
     tp=tr.cells[0].paragraphs[0]; tp.alignment=WD_ALIGN_PARAGRAPH.RIGHT
     run(tp,"GRAND TOTAL",bold=True,size=10,color=NAVY)
     freight=float(vendor.get("freight",0) or 0)
@@ -221,7 +248,7 @@ def generate_quote(solicitation, vendor, line_items):
 
     # Notes & Terms
     notes=vendor.get("notes",""); terms=vendor.get("terms","")
-    if notes or terms:
+    if inc_notes and (notes or terms):
         heading("NOTES & TERMS")
         if notes:
             np=doc.add_paragraph(); np.paragraph_format.left_indent=Inches(0.1)
@@ -255,19 +282,20 @@ def generate_quote(solicitation, vendor, line_items):
             run(rp3,f"${total_oy:,.2f}",bold=is_last,size=9,color=NAVY if is_last else DGRAY)
 
     # Signature
-    heading("AUTHORIZED SIGNATURE", sb=18)
-    sigt=doc.add_table(rows=1,cols=2); sigt.style="Table Grid"; sigt.autofit=False
-    sigt.columns[0].width=Inches(3.0); sigt.columns[1].width=Inches(3.0)
-    sigt.alignment = WD_TABLE_ALIGNMENT.CENTER
-    row_keep(sigt.rows[0])
-    lsc=sigt.cell(0,0); rsc=sigt.cell(0,1)
-    def sigline(cell,label,value=""):
-        p=cell.add_paragraph(); p.paragraph_format.left_indent=Pt(6); p.paragraph_format.space_after=Pt(10)
-        run(p,f"{label}: ",bold=True,size=9,color=NAVY); run(p,value or "_"*28,size=9,color=DGRAY)
-    sigline(lsc,"Authorized Signature"); sigline(lsc,"Printed Name",vendor.get("prepared_by",""))
-    sigline(lsc,"Title",vendor.get("title","")); sigline(lsc,"Date",today)
-    sigline(rsc,"Company",vendor.get("company_name","")); sigline(rsc,"Phone",vendor.get("phone",""))
-    sigline(rsc,"Email",vendor.get("email","")); sigline(rsc,"SAM UEI",vendor.get("sam_uei",""))
+    if inc_signature:
+        heading("AUTHORIZED SIGNATURE", sb=18)
+        sigt=doc.add_table(rows=1,cols=2); sigt.style="Table Grid"; sigt.autofit=False
+        sigt.columns[0].width=Inches(3.0); sigt.columns[1].width=Inches(3.0)
+        sigt.alignment = WD_TABLE_ALIGNMENT.CENTER
+        row_keep(sigt.rows[0])
+        lsc=sigt.cell(0,0); rsc=sigt.cell(0,1)
+        def sigline(cell,label,value=""):
+            p=cell.add_paragraph(); p.paragraph_format.left_indent=Pt(6); p.paragraph_format.space_after=Pt(10)
+            run(p,f"{label}: ",bold=True,size=9,color=NAVY); run(p,value or "_"*28,size=9,color=DGRAY)
+        sigline(lsc,"Authorized Signature"); sigline(lsc,"Printed Name",vendor.get("prepared_by",""))
+        sigline(lsc,"Title",vendor.get("title","")); sigline(lsc,"Date",today)
+        sigline(rsc,"Company",vendor.get("company_name","")); sigline(rsc,"Phone",vendor.get("phone",""))
+        sigline(rsc,"Email",vendor.get("email","")); sigline(rsc,"SAM UEI",vendor.get("sam_uei",""))
     doc.add_paragraph()
     fp=doc.add_paragraph(); fp.alignment=WD_ALIGN_PARAGRAPH.CENTER
     run(fp,f"Quote valid for {vendor.get('validity_period','30 days')} from {today}.",
